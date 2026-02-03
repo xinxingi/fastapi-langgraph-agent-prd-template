@@ -6,6 +6,7 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 
 from app.core.auth.dependencies import get_current_user
+from app.core.auth.jwt import create_access_token
 from app.core.auth.models import BaseUser
 from app.core.auth.schemas import (
     BearerTokenCreate,
@@ -33,7 +34,7 @@ async def register_user(request: Request, user_data: UserCreate):
         user_data: 用户注册数据
 
     Returns:
-        UserResponse: 创建的用户信息和 API Token
+        UserResponse: 创建的用户信息
     """
     try:
         # 清理电子邮件
@@ -50,15 +51,9 @@ async def register_user(request: Request, user_data: UserCreate):
         # 创建用户
         user = await auth_service.create_user(email=sanitized_email, password=BaseUser.hash_password(password))
 
-        # 创建 Bearer Token（默认 90 天有效期）
-        bearer_token, raw_token = await auth_service.create_bearer_token(user.id, name="Default Token")
+        logger.info("user_registered", user_id=user.id, email=sanitized_email)
 
-        # 构造响应
-        from app.core.auth.schemas import Token
-
-        token = Token(access_token=raw_token, token_type="bearer", expires_at=bearer_token.expires_at)
-
-        return UserResponse(id=user.id, email=user.email, token=token)
+        return UserResponse(id=user.id, email=user.email)
     except ValueError as ve:
         logger.error("user_registration_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
@@ -81,7 +76,7 @@ async def login(
         grant_type: 必须是 "password"
 
     Returns:
-        TokenResponse: API Token 信息
+        TokenResponse: JWT Token 信息
 
     Raises:
         HTTPException: 如果凭据无效
@@ -114,10 +109,15 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # 创建新的 Bearer Token
-        bearer_token, raw_token = await auth_service.create_bearer_token(user.id, name="Login Token")
+        # 创建 JWT Token
+        from datetime import timedelta, datetime, UTC
 
-        return TokenResponse(access_token=raw_token, token_type="bearer", expires_at=bearer_token.expires_at)
+        access_token = create_access_token(user.id)
+        expires_at = datetime.now(UTC) + timedelta(days=settings.JWT_ACCESS_TOKEN_EXPIRE_DAYS)
+
+        logger.info("user_logged_in", user_id=user.id, email=user.email)
+
+        return TokenResponse(access_token=access_token, token_type="bearer", expires_at=expires_at)
     except ValueError as ve:
         logger.error("login_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))

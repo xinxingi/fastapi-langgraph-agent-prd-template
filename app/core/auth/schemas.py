@@ -83,17 +83,17 @@ class UserCreate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """用户操作的响应模型。
+    """用户注册的响应模型。
 
     Attributes:
         id: 用户的ID
         email: 用户的电子邮件地址
-        token: 认证令牌
+        message: 成功消息
     """
 
     id: int = Field(..., description="用户的ID")
     email: str = Field(..., description="用户的电子邮件地址")
-    token: Token = Field(..., description="认证令牌")
+    message: str = Field(default="User registered successfully", description="成功消息")
 
 
 class BearerTokenCreate(BaseModel):
@@ -101,11 +101,35 @@ class BearerTokenCreate(BaseModel):
 
     Attributes:
         name: Token 名称（用于识别）
-        expires_in_days: Token 有效期（天数），默认 90 天
+        expires_in_days: Token 有效期（天数），默认 90 天，最长可设置到 2099 年
     """
 
     name: str = Field(..., description="Token 名称", max_length=100)
-    expires_in_days: int = Field(default=90, description="Token 有效期（天数）", ge=1, le=365)
+    expires_in_days: int = Field(default=90, description="Token 有效期（天数），最长可设置到 2099 年", ge=1, le=27000)
+
+    @field_validator("expires_in_days")
+    @classmethod
+    def validate_expiry_date(cls, v: int) -> int:
+        """验证过期时间不超过 2099 年。
+
+        Args:
+            v: 要验证的天数
+
+        Returns:
+            int: 验证后的天数
+
+        Raises:
+            ValueError: 如果过期日期超过 2099 年
+        """
+        from datetime import datetime, timedelta, UTC
+
+        max_date = datetime(2099, 12, 31, tzinfo=UTC)
+        future_date = datetime.now(UTC) + timedelta(days=v)
+
+        if future_date > max_date:
+            raise ValueError(f"过期时间不能超过 2099 年 12 月 31 日")
+
+        return v
 
 
 class BearerTokenResponse(BaseModel):

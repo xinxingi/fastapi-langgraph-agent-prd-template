@@ -34,12 +34,12 @@ class BaseUser(BaseModel, table=True):
 
     __tablename__ = "bs_users"
 
-    id: int = Field(default=None, primary_key=True)
-    email: str = Field(unique=True, index=True, max_length=255)
-    hashed_password: str = Field(max_length=255)
-    is_active: bool = Field(default=True)
-    is_superuser: bool = Field(default=False)
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    id: int = Field(default=None, primary_key=True, sa_column_kwargs={"comment": "用户ID"})
+    email: str = Field(unique=True, index=True, max_length=255, sa_column_kwargs={"comment": "用户邮箱"})
+    hashed_password: str = Field(max_length=255, sa_column_kwargs={"comment": "bcrypt哈希后的密码"})
+    is_active: bool = Field(default=True, sa_column_kwargs={"comment": "用户是否激活"})
+    is_superuser: bool = Field(default=False, sa_column_kwargs={"comment": "是否为超级管理员"})
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column_kwargs={"comment": "更新时间"})
 
     # 关系
     bearer_tokens: List["BearerToken"] = Relationship(back_populates="user", cascade_delete=True)
@@ -88,12 +88,14 @@ class BearerToken(BaseModel, table=True):
 
     __tablename__ = "bs_bearer_tokens"
 
-    id: int = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="bs_users.id")
-    name: Optional[str] = Field(default=None, max_length=100)
-    token_hash: str = Field(unique=True, index=True, max_length=255)
-    expires_at: datetime
-    revoked: bool = Field(default=False)
+    id: int = Field(default=None, primary_key=True, sa_column_kwargs={"comment": "Token ID"})
+    user_id: int = Field(foreign_key="bs_users.id", sa_column_kwargs={"comment": "所属用户ID"})
+    name: Optional[str] = Field(default=None, max_length=100, sa_column_kwargs={"comment": "Token名称"})
+    token_hash: str = Field(
+        unique=True, index=True, max_length=255, sa_column_kwargs={"comment": "Token的SHA256哈希值"}
+    )
+    expires_at: datetime = Field(sa_column_kwargs={"comment": "过期时间"})
+    revoked: bool = Field(default=False, sa_column_kwargs={"comment": "是否已撤销"})
 
     # 关系
     user: BaseUser = Relationship(back_populates="bearer_tokens")

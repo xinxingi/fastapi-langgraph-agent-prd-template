@@ -34,12 +34,14 @@ class ChatSession(BaseModel, table=True):
 
     __tablename__ = "cb_sessions"
 
-    id: str = Field(primary_key=True, max_length=36)
-    user_id: int = Field(foreign_key="bs_users.id", index=True)
-    name: str = Field(default="", max_length=100)
-    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    last_activity_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    id: str = Field(primary_key=True, max_length=36, sa_column_kwargs={"comment": "会话ID (UUID)"})
+    user_id: int = Field(foreign_key="bs_users.id", index=True, sa_column_kwargs={"comment": "所属用户ID"})
+    name: str = Field(default="", max_length=100, sa_column_kwargs={"comment": "会话名称"})
+    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, comment="扩展元数据(JSON)"))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column_kwargs={"comment": "更新时间"})
+    last_activity_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), index=True, sa_column_kwargs={"comment": "最后活跃时间"}
+    )
 
     # 关系
     messages: List["ChatMessage"] = Relationship(back_populates="session", cascade_delete=True)
@@ -67,11 +69,13 @@ class ChatMessage(BaseModel, table=True):
 
     __tablename__ = "cb_messages"
 
-    id: int = Field(default=None, primary_key=True)
-    session_id: str = Field(foreign_key="cb_sessions.id", index=True, max_length=36)
-    role: str = Field(max_length=50)
-    content: str = Field(sa_column=Column(Text))
-    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    id: int = Field(default=None, primary_key=True, sa_column_kwargs={"comment": "消息ID"})
+    session_id: str = Field(
+        foreign_key="cb_sessions.id", index=True, max_length=36, sa_column_kwargs={"comment": "所属会话ID"}
+    )
+    role: str = Field(max_length=50, sa_column_kwargs={"comment": "消息角色(user/assistant/system)"})
+    content: str = Field(sa_column=Column(Text, comment="消息内容"))
+    extra_data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, comment="扩展元数据(JSON)"))
 
     # 关系
     session: ChatSession = Relationship(back_populates="messages")
