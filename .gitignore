@@ -24,3 +24,6 @@ evals/reports/
 
 # IDEA
 .idea
+
+# UV
+uv.lock
