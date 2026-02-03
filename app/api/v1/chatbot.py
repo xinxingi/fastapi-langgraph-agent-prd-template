@@ -1,7 +1,7 @@
-"""Chatbot API endpoints for handling chat interactions.
+"""用于处理聊天交互的聊天机器人 API 端点。
 
-This module provides endpoints for chat interactions, including regular chat,
-streaming chat, message history management, and chat history clearing.
+此模块提供聊天交互的端点，包括常规聊天、
+流式聊天、消息历史管理和聊天历史清除。
 """
 
 import json
@@ -40,18 +40,18 @@ async def chat(
     chat_request: ChatRequest,
     session: Session = Depends(get_current_session),
 ):
-    """Process a chat request using LangGraph.
+    """使用 LangGraph 处理聊天请求。
 
-    Args:
-        request: The FastAPI request object for rate limiting.
-        chat_request: The chat request containing messages.
-        session: The current session from the auth token.
+    参数:
+        request: 用于速率限制的 FastAPI 请求对象。
+        chat_request: 包含消息的聊天请求。
+        session: 来自身份验证令牌的当前会话。
 
-    Returns:
-        ChatResponse: The processed chat response.
+    返回:
+        ChatResponse: 处理后的聊天响应。
 
-    Raises:
-        HTTPException: If there's an error processing the request.
+    异常:
+        HTTPException: 如果处理请求时出错。
     """
     try:
         logger.info(
@@ -77,18 +77,18 @@ async def chat_stream(
     chat_request: ChatRequest,
     session: Session = Depends(get_current_session),
 ):
-    """Process a chat request using LangGraph with streaming response.
+    """使用 LangGraph 处理聊天请求并流式返回响应。
 
-    Args:
-        request: The FastAPI request object for rate limiting.
-        chat_request: The chat request containing messages.
-        session: The current session from the auth token.
+    参数:
+        request: 用于速率限制的 FastAPI 请求对象。
+        chat_request: 包含消息的聊天请求。
+        session: 来自身份验证令牌的当前会话。
 
-    Returns:
-        StreamingResponse: A streaming response of the chat completion.
+    返回:
+        StreamingResponse: 聊天完成的流式响应。
 
-    Raises:
-        HTTPException: If there's an error processing the request.
+    异常:
+        HTTPException: 如果处理请求时出错。
     """
     try:
         logger.info(
@@ -98,13 +98,13 @@ async def chat_stream(
         )
 
         async def event_generator():
-            """Generate streaming events.
+            """生成流式事件。
 
-            Yields:
-                str: Server-sent events in JSON format.
+            产出:
+                str: JSON 格式的服务器发送事件。
 
-            Raises:
-                Exception: If there's an error during streaming.
+            异常:
+                Exception: 如果流式传输过程中出错。
             """
             try:
                 full_response = ""
@@ -116,7 +116,7 @@ async def chat_stream(
                         response = StreamResponse(content=chunk, done=False)
                         yield f"data: {json.dumps(response.model_dump())}\n\n"
 
-                # Send final message indicating completion
+                # 发送表示完成的最终消息
                 final_response = StreamResponse(content="", done=True)
                 yield f"data: {json.dumps(final_response.model_dump())}\n\n"
 
@@ -148,17 +148,17 @@ async def get_session_messages(
     request: Request,
     session: Session = Depends(get_current_session),
 ):
-    """Get all messages for a session.
+    """获取会话的所有消息。
 
-    Args:
-        request: The FastAPI request object for rate limiting.
-        session: The current session from the auth token.
+    参数:
+        request: 用于速率限制的 FastAPI 请求对象。
+        session: 来自身份验证令牌的当前会话。
 
-    Returns:
-        ChatResponse: All messages in the session.
+    返回:
+        ChatResponse: 会话中的所有消息。
 
-    Raises:
-        HTTPException: If there's an error retrieving the messages.
+    异常:
+        HTTPException: 如果检索消息时出错。
     """
     try:
         messages = await agent.get_chat_history(session.id)
@@ -174,14 +174,14 @@ async def clear_chat_history(
     request: Request,
     session: Session = Depends(get_current_session),
 ):
-    """Clear all messages for a session.
+    """清除会话的所有消息。
 
-    Args:
-        request: The FastAPI request object for rate limiting.
-        session: The current session from the auth token.
+    参数:
+        request: 用于速率限制的 FastAPI 请求对象。
+        session: 来自身份验证令牌的当前会话。
 
-    Returns:
-        dict: A message indicating the chat history was cleared.
+    返回:
+        dict: 表示聊天历史已清除的消息。
     """
     try:
         await agent.clear_chat_history(session.id)

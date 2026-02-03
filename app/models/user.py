@@ -1,4 +1,4 @@
-"""This file contains the user model for the application."""
+"""此文件包含应用程序的用户模型。"""
 
 from typing import (
     TYPE_CHECKING,
@@ -18,14 +18,14 @@ if TYPE_CHECKING:
 
 
 class User(BaseModel, table=True):
-    """User model for storing user accounts.
+    """存储用户账户的用户模型。
 
     Attributes:
-        id: The primary key
-        email: User's email (unique)
-        hashed_password: Bcrypt hashed password
-        created_at: When the user was created
-        sessions: Relationship to user's chat sessions
+        id: 主键
+        email: 用户的电子邮件（唯一）
+        hashed_password: Bcrypt哈希密码
+        created_at: 用户创建时间
+        sessions: 用户聊天会话的关系
     """
 
     id: int = Field(default=None, primary_key=True)
@@ -34,15 +34,15 @@ class User(BaseModel, table=True):
     sessions: List["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:
-        """Verify if the provided password matches the hash."""
+        """验证提供的密码是否与哈希值匹配。"""
         return bcrypt.checkpw(password.encode("utf-8"), self.hashed_password.encode("utf-8"))
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash a password using bcrypt."""
+        """使用bcrypt哈希密码。"""
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
-# Avoid circular imports
+# 避免循环导入
 from app.models.session import Session  # noqa: E402

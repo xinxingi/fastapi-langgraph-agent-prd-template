@@ -1,4 +1,4 @@
-"""This file contains the authentication schema for the application."""
+"""此文件包含应用程序的认证schema。"""
 
 import re
 from datetime import datetime
@@ -13,117 +13,117 @@ from pydantic import (
 
 
 class Token(BaseModel):
-    """Token model for authentication.
+    """认证的Token模型。
 
     Attributes:
-        access_token: The JWT access token.
-        token_type: The type of token (always "bearer").
-        expires_at: The token expiration timestamp.
+        access_token: JWT访问令牌。
+        token_type: 令牌类型（始终为"bearer"）。
+        expires_at: 令牌过期时间戳。
     """
 
-    access_token: str = Field(..., description="The JWT access token")
-    token_type: str = Field(default="bearer", description="The type of token")
-    expires_at: datetime = Field(..., description="The token expiration timestamp")
+    access_token: str = Field(..., description="JWT访问令牌")
+    token_type: str = Field(default="bearer", description="令牌类型")
+    expires_at: datetime = Field(..., description="令牌过期时间戳")
 
 
 class TokenResponse(BaseModel):
-    """Response model for login endpoint.
+    """登录端点的响应模型。
 
     Attributes:
-        access_token: The JWT access token
-        token_type: The type of token (always "bearer")
-        expires_at: When the token expires
+        access_token: JWT访问令牌
+        token_type: 令牌类型（始终为"bearer"）
+        expires_at: 令牌过期时间
     """
 
-    access_token: str = Field(..., description="The JWT access token")
-    token_type: str = Field(default="bearer", description="The type of token")
-    expires_at: datetime = Field(..., description="When the token expires")
+    access_token: str = Field(..., description="JWT访问令牌")
+    token_type: str = Field(default="bearer", description="令牌类型")
+    expires_at: datetime = Field(..., description="令牌过期时间")
 
 
 class UserCreate(BaseModel):
-    """Request model for user registration.
+    """用户注册的请求模型。
 
     Attributes:
-        email: User's email address
-        password: User's password
+        email: 用户的电子邮件地址
+        password: 用户的密码
     """
 
-    email: EmailStr = Field(..., description="User's email address")
-    password: SecretStr = Field(..., description="User's password", min_length=8, max_length=64)
+    email: EmailStr = Field(..., description="用户的电子邮件地址")
+    password: SecretStr = Field(..., description="用户的密码", min_length=8, max_length=64)
 
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: SecretStr) -> SecretStr:
-        """Validate password strength.
+        """验证密码强度。
 
         Args:
-            v: The password to validate
+            v: 要验证的密码
 
         Returns:
-            SecretStr: The validated password
+            SecretStr: 验证后的密码
 
         Raises:
-            ValueError: If the password is not strong enough
+            ValueError: 如果密码强度不够
         """
         password = v.get_secret_value()
 
-        # Check for common password requirements
+        # 检查常见的密码要求
         if len(password) < 8:
-            raise ValueError("Password must be at least 8 characters long")
+            raise ValueError("密码长度至少为8个字符")
 
         if not re.search(r"[A-Z]", password):
-            raise ValueError("Password must contain at least one uppercase letter")
+            raise ValueError("密码必须包含至少一个大写字母")
 
         if not re.search(r"[a-z]", password):
-            raise ValueError("Password must contain at least one lowercase letter")
+            raise ValueError("密码必须包含至少一个小写字母")
 
         if not re.search(r"[0-9]", password):
-            raise ValueError("Password must contain at least one number")
+            raise ValueError("密码必须包含至少一个数字")
 
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            raise ValueError("Password must contain at least one special character")
+            raise ValueError("密码必须包含至少一个特殊字符")
 
         return v
 
 
 class UserResponse(BaseModel):
-    """Response model for user operations.
+    """用户操作的响应模型。
 
     Attributes:
-        id: User's ID
-        email: User's email address
-        token: Authentication token
+        id: 用户的ID
+        email: 用户的电子邮件地址
+        token: 认证令牌
     """
 
-    id: int = Field(..., description="User's ID")
-    email: str = Field(..., description="User's email address")
-    token: Token = Field(..., description="Authentication token")
+    id: int = Field(..., description="用户的ID")
+    email: str = Field(..., description="用户的电子邮件地址")
+    token: Token = Field(..., description="认证令牌")
 
 
 class SessionResponse(BaseModel):
-    """Response model for session creation.
+    """会话创建的响应模型。
 
     Attributes:
-        session_id: The unique identifier for the chat session
-        name: Name of the session (defaults to empty string)
-        token: The authentication token for the session
+        session_id: 聊天会话的唯一标识符
+        name: 会话名称（默认为空字符串）
+        token: 会话的认证令牌
     """
 
-    session_id: str = Field(..., description="The unique identifier for the chat session")
-    name: str = Field(default="", description="Name of the session", max_length=100)
-    token: Token = Field(..., description="The authentication token for the session")
+    session_id: str = Field(..., description="聊天会话的唯一标识符")
+    name: str = Field(default="", description="会话名称", max_length=100)
+    token: Token = Field(..., description="会话的认证令牌")
 
     @field_validator("name")
     @classmethod
     def sanitize_name(cls, v: str) -> str:
-        """Sanitize the session name.
+        """清理会话名称。
 
         Args:
-            v: The name to sanitize
+            v: 要清理的名称
 
         Returns:
-            str: The sanitized name
+            str: 清理后的名称
         """
-        # Remove any potentially harmful characters
+        # 移除任何可能有害的字符
         sanitized = re.sub(r'[<>{}[\]()\'"`]', "", v)
         return sanitized

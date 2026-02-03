@@ -1,4 +1,4 @@
-"""This file contains the main application entry point."""
+"""该文件包含主应用程序入口点。"""
 
 import os
 from contextlib import asynccontextmanager
@@ -32,10 +32,10 @@ from app.core.middleware import (
 )
 from app.services.database import database_service
 
-# Load environment variables
+# 加载环境变量
 load_dotenv()
 
-# Initialize Langfuse
+# 初始化Langfuse
 langfuse = Langfuse(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
     secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
@@ -45,7 +45,7 @@ langfuse = Langfuse(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Handle application startup and shutdown events."""
+    """处理应用程序启动和关闭事件。"""
     logger.info(
         "application_startup",
         project_name=settings.PROJECT_NAME,
@@ -64,33 +64,33 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Set up Prometheus metrics
+# 设置Prometheus指标
 setup_metrics(app)
 
-# Add logging context middleware (must be added before other middleware to capture context)
+# 添加日志上下文中间件（必须在其他中间件之前添加以捕获上下文）
 app.add_middleware(LoggingContextMiddleware)
 
-# Add custom metrics middleware
+# 添加自定义指标中间件
 app.add_middleware(MetricsMiddleware)
 
-# Set up rate limiter exception handler
+# 设置速率限制器异常处理器
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
-# Add validation exception handler
+# 添加验证异常处理器
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors from request data.
+    """处理请求数据的验证错误。
 
     Args:
-        request: The request that caused the validation error
-        exc: The validation error
+        request: 导致验证错误的请求
+        exc: 验证错误
 
     Returns:
-        JSONResponse: A formatted error response
+        JSONResponse: 格式化的错误响应
     """
-    # Log the validation error
+    # 记录验证错误
     logger.error(
         "validation_error",
         client_host=request.client.host if request.client else "unknown",
@@ -98,7 +98,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         errors=str(exc.errors()),
     )
 
-    # Format the errors to be more user-friendly
+    # 格式化错误使其更加用户友好
     formatted_errors = []
     for error in exc.errors():
         loc = " -> ".join([str(loc_part) for loc_part in error["loc"] if loc_part != "body"])
@@ -110,7 +110,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-# Set up CORS middleware
+# 设置CORS中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -119,14 +119,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API router
+# 包含API路由器
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["root"][0])
 async def root(request: Request):
-    """Root endpoint returning basic API information."""
+    """根端点，返回基本API信息。"""
     logger.info("root_endpoint_called")
     return {
         "name": settings.PROJECT_NAME,
@@ -141,14 +141,14 @@ async def root(request: Request):
 @app.get("/health")
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["health"][0])
 async def health_check(request: Request) -> Dict[str, Any]:
-    """Health check endpoint with environment-specific information.
+    """健康检查端点，包含特定环境信息。
 
     Returns:
-        Dict[str, Any]: Health status information
+        Dict[str, Any]: 健康状态信息
     """
     logger.info("health_check_called")
 
-    # Check database connectivity
+    # 检查数据库连接
     db_healthy = await database_service.health_check()
 
     response = {
@@ -159,7 +159,7 @@ async def health_check(request: Request) -> Dict[str, Any]:
         "timestamp": datetime.now().isoformat(),
     }
 
-    # If DB is unhealthy, set the appropriate status code
+    # 如果数据库不健康，设置适当的状态码
     status_code = status.HTTP_200_OK if db_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
 
     return JSONResponse(content=response, status_code=status_code)

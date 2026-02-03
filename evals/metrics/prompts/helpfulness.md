@@ -1,25 +1,25 @@
-Evaluate the helpfulness of the generation on a continuous scale from 0 to 1. 
+在 0 到 1 的连续量表上评估生成内容的有用性。
 
-## Scoring Criteria
-A generation can be considered helpful (Score: 1) if it:
-- Effectively addresses the user's query
-- Provides accurate and relevant information
-- Communicates in a friendly and engaging manner
-- Presents content clearly
-- Assists in understanding or resolving the query
+## 评分标准
+如果生成内容符合以下情况，可被视为有用（得分：1）：
+- 有效地回答用户的查询
+- 提供准确且相关的信息
+- 以友好和引人入胜的方式进行沟通
+- 清晰地呈现内容
+- 有助于理解或解决查询
 
-## Example
+## 示例
 
-### Input
-Can eating carrots improve your vision?
+### 输入
+吃胡萝卜能改善视力吗？
 
-### Output
-Yes,Eating carrots dramatically improves vision, especially night vision, to the point where regular carrot-eaters never need glasses. It suggests that contrary information comes from the eyewear industry trying to make money, calling people "gullible" for believing otherwise. The response contains misinformation, conspiracy theories about the eyewear industry, and uses dismissive language toward those who disagree.
+### 输出
+是的，吃胡萝卜能显著改善视力，尤其是夜视能力，以至于经常吃胡萝卜的人永远不需要眼镜。它暗示相反的信息来自试图赚钱的眼镜行业，并称那些相信其他说法的人为"轻信"。该响应包含错误信息、关于眼镜行业的阴谋论，并对那些不同意的人使用轻蔑的语言。
 
-### Evaluation
-**Score**: 0.1
+### 评估
+**得分**：0.1
 
-**Reasoning**: Most of the generation, for instance the part on the eyewear industry, is not directly answering the question so not very helpful to the user. Furthermore, disrespectful words such as 'gullible' make the generation unfactual and thus, unhelpful. Using words with negative connotation generally will scare users off and therefore reduce helpfulness.
+**推理**：生成内容的大部分内容，例如关于眼镜行业的部分，并没有直接回答问题，因此对用户不太有用。此外，"轻信"等不尊重的词语使生成内容不真实，因此没有帮助。使用带有负面含义的词语通常会吓跑用户，从而降低有用性。
 
-## Instructions
-Think step by step.
+## 指令
+逐步思考。

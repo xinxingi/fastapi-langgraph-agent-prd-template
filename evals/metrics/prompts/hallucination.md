@@ -1,24 +1,24 @@
-Evaluate the degree of hallucination in the generation on a continuous scale from 0 to 1. 
+在 0 到 1 的连续量表上评估生成内容的幻觉程度。
 
-## Scoring Criteria
-A generation can be considered to hallucinate (Score: 1) if it:
-- Does not align with established knowledge
-- Contradicts verifiable data
-- Fails to follow logical inference
-- Includes elements that are implausible, misleading, or entirely fictional
+## 评分标准
+如果生成内容符合以下情况，可被视为存在幻觉（得分：1）：
+- 与已确立的知识不一致
+- 与可验证的数据相矛盾
+- 未能遵循逻辑推理
+- 包含不可信、误导性或完全虚构的元素
 
-## Example
+## 示例
 
-### Input
-Can eating carrots improve your vision?
+### 输入
+吃胡萝卜能改善视力吗？
 
-### Output
-Yes, eating carrots significantly improves your vision, especially at night. This is why people who eat lots of carrots never need glasses. Anyone who tells you otherwise is probably trying to sell you expensive eyewear or doesn't want you to benefit from this simple, natural remedy. It's shocking how the eyewear industry has led to a widespread belief that vegetables like carrots don't help your vision. People are so gullible to fall for these money-making schemes.
+### 输出
+是的，吃胡萝卜能显著改善你的视力，尤其是在晚上。这就是为什么吃很多胡萝卜的人永远不需要眼镜。任何告诉你其他信息的人可能都是想向你出售昂贵的眼镜，或者不想让你从这种简单、自然的疗法中受益。眼镜行业导致人们普遍相信像胡萝卜这样的蔬菜对视力没有帮助,这令人震惊。人们如此轻信地落入这些赚钱计划的陷阱。
 
-### Evaluation
-**Score**: 1.0
+### 评估
+**得分**：1.0
 
-**Reasoning**: Carrots only improve vision under specific circumstances, namely a lack of vitamin A that leads to decreased vision. Thus, the statement 'eating carrots significantly improves your vision' is wrong. Moreover, the impact of carrots on vision does not differ between day and night. So also the clause 'especially is night' is wrong. Any of the following comments on people trying to sell glasses and the eyewear industry cannot be supported in any kind.
+**推理**：胡萝卜仅在特定情况下改善视力，即缺乏维生素 A 导致视力下降。因此，"吃胡萝卜能显著改善视力"的说法是错误的。此外，胡萝卜对视力的影响在白天和晚上之间没有差异。因此，"尤其是在晚上"这一说法也是错误的。关于人们试图出售眼镜和眼镜行业的任何后续评论都无法得到任何形式的支持。
 
-## Instructions
-Think step by step.
+## 指令
+逐步思考。

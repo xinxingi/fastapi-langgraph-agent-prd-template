@@ -1,4 +1,4 @@
-"""This file contains the session model for the application."""
+"""此文件包含应用程序的会话模型。"""
 
 from typing import (
     TYPE_CHECKING,
@@ -17,15 +17,15 @@ if TYPE_CHECKING:
 
 
 class Session(BaseModel, table=True):
-    """Session model for storing chat sessions.
+    """存储聊天会话的会话模型。
 
     Attributes:
-        id: The primary key
-        user_id: Foreign key to the user
-        name: Name of the session (defaults to empty string)
-        created_at: When the session was created
-        messages: Relationship to session messages
-        user: Relationship to the session owner
+        id: 主键
+        user_id: 用户的外键
+        name: 会话名称（默认为空字符串）
+        created_at: 会话创建时间
+        messages: 会话消息的关系
+        user: 会话所有者的关系
     """
 
     id: str = Field(primary_key=True)

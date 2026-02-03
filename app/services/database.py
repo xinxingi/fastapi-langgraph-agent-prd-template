@@ -1,4 +1,4 @@
-"""This file contains the database service for the application."""
+"""该文件包含应用程序的数据库服务。"""
 
 from typing import (
     List,
@@ -25,20 +25,20 @@ from app.models.user import User
 
 
 class DatabaseService:
-    """Service class for database operations.
+    """数据库操作的服务类。
 
-    This class handles all database operations for Users, Sessions, and Messages.
-    It uses SQLModel for ORM operations and maintains a connection pool.
+    该类处理用户、会话和消息的所有数据库操作。
+    它使用SQLModel进行ORM操作并维护一个连接池。
     """
 
     def __init__(self):
-        """Initialize database service with connection pool."""
+        """使用连接池初始化数据库服务。"""
         try:
-            # Configure environment-specific database connection pool settings
+            # 配置特定环境的数据库连接池设置
             pool_size = settings.POSTGRES_POOL_SIZE
             max_overflow = settings.POSTGRES_MAX_OVERFLOW
 
-            # Create engine with appropriate pool configuration
+            # 使用适当的池配置创建引擎
             connection_url = (
                 f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
                 f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
@@ -50,11 +50,11 @@ class DatabaseService:
                 poolclass=QueuePool,
                 pool_size=pool_size,
                 max_overflow=max_overflow,
-                pool_timeout=30,  # Connection timeout (seconds)
-                pool_recycle=1800,  # Recycle connections after 30 minutes
+                pool_timeout=30,  # 连接超时（秒）
+                pool_recycle=1800,  # 30分钟后回收连接
             )
 
-            # Create tables (only if they don't exist)
+            # 创建表（仅当它们不存在时）
             SQLModel.metadata.create_all(self.engine)
 
             logger.info(
@@ -65,19 +65,19 @@ class DatabaseService:
             )
         except SQLAlchemyError as e:
             logger.error("database_initialization_error", error=str(e), environment=settings.ENVIRONMENT.value)
-            # In production, don't raise - allow app to start even with DB issues
+            # 在生产环境中，不抛出异常 - 即使数据库有问题也允许应用启动
             if settings.ENVIRONMENT != Environment.PRODUCTION:
                 raise
 
     async def create_user(self, email: str, password: str) -> User:
-        """Create a new user.
+        """创建新用户。
 
         Args:
-            email: User's email address
-            password: Hashed password
+            email: 用户的邮箱地址
+            password: 哈希密码
 
         Returns:
-            User: The created user
+            User: 创建的用户
         """
         with Session(self.engine) as session:
             user = User(email=email, hashed_password=password)
@@ -88,26 +88,26 @@ class DatabaseService:
             return user
 
     async def get_user(self, user_id: int) -> Optional[User]:
-        """Get a user by ID.
+        """通过ID获取用户。
 
         Args:
-            user_id: The ID of the user to retrieve
+            user_id: 要检索的用户ID
 
         Returns:
-            Optional[User]: The user if found, None otherwise
+            Optional[User]: 如果找到则返回用户，否则返回None
         """
         with Session(self.engine) as session:
             user = session.get(User, user_id)
             return user
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        """Get a user by email.
+        """通过邮箱获取用户。
 
         Args:
-            email: The email of the user to retrieve
+            email: 要检索的用户邮箱
 
         Returns:
-            Optional[User]: The user if found, None otherwise
+            Optional[User]: 如果找到则返回用户，否则返回None
         """
         with Session(self.engine) as session:
             statement = select(User).where(User.email == email)
@@ -115,13 +115,13 @@ class DatabaseService:
             return user
 
     async def delete_user_by_email(self, email: str) -> bool:
-        """Delete a user by email.
+        """通过邮箱删除用户。
 
         Args:
-            email: The email of the user to delete
+            email: 要删除的用户邮箱
 
         Returns:
-            bool: True if deletion was successful, False if user not found
+            bool: 如果删除成功则返回True，如果未找到用户则返回False
         """
         with Session(self.engine) as session:
             user = session.exec(select(User).where(User.email == email)).first()
@@ -134,15 +134,15 @@ class DatabaseService:
             return True
 
     async def create_session(self, session_id: str, user_id: int, name: str = "") -> ChatSession:
-        """Create a new chat session.
+        """创建新的聊天会话。
 
         Args:
-            session_id: The ID for the new session
-            user_id: The ID of the user who owns the session
-            name: Optional name for the session (defaults to empty string)
+            session_id: 新会话的ID
+            user_id: 拥有该会话的用户ID
+            name: 会话的可选名称（默认为空字符串）
 
         Returns:
-            ChatSession: The created session
+            ChatSession: 创建的会话
         """
         with Session(self.engine) as session:
             chat_session = ChatSession(id=session_id, user_id=user_id, name=name)
@@ -153,13 +153,13 @@ class DatabaseService:
             return chat_session
 
     async def delete_session(self, session_id: str) -> bool:
-        """Delete a session by ID.
+        """通过ID删除会话。
 
         Args:
-            session_id: The ID of the session to delete
+            session_id: 要删除的会话ID
 
         Returns:
-            bool: True if deletion was successful, False if session not found
+            bool: 如果删除成功则返回True，如果未找到会话则返回False
         """
         with Session(self.engine) as session:
             chat_session = session.get(ChatSession, session_id)
@@ -172,26 +172,26 @@ class DatabaseService:
             return True
 
     async def get_session(self, session_id: str) -> Optional[ChatSession]:
-        """Get a session by ID.
+        """通过ID获取会话。
 
         Args:
-            session_id: The ID of the session to retrieve
+            session_id: 要检索的会话ID
 
         Returns:
-            Optional[ChatSession]: The session if found, None otherwise
+            Optional[ChatSession]: 如果找到则返回会话，否则返回None
         """
         with Session(self.engine) as session:
             chat_session = session.get(ChatSession, session_id)
             return chat_session
 
     async def get_user_sessions(self, user_id: int) -> List[ChatSession]:
-        """Get all sessions for a user.
+        """获取用户的所有会话。
 
         Args:
-            user_id: The ID of the user
+            user_id: 用户的ID
 
         Returns:
-            List[ChatSession]: List of user's sessions
+            List[ChatSession]: 用户的会话列表
         """
         with Session(self.engine) as session:
             statement = select(ChatSession).where(ChatSession.user_id == user_id).order_by(ChatSession.created_at)
@@ -199,17 +199,17 @@ class DatabaseService:
             return sessions
 
     async def update_session_name(self, session_id: str, name: str) -> ChatSession:
-        """Update a session's name.
+        """更新会话名称。
 
         Args:
-            session_id: The ID of the session to update
-            name: The new name for the session
+            session_id: 要更新的会话ID
+            name: 会话的新名称
 
         Returns:
-            ChatSession: The updated session
+            ChatSession: 更新后的会话
 
         Raises:
-            HTTPException: If session is not found
+            HTTPException: 如果未找到会话
         """
         with Session(self.engine) as session:
             chat_session = session.get(ChatSession, session_id)
@@ -224,22 +224,22 @@ class DatabaseService:
             return chat_session
 
     def get_session_maker(self):
-        """Get a session maker for creating database sessions.
+        """获取用于创建数据库会话的会话生成器。
 
         Returns:
-            Session: A SQLModel session maker
+            Session: SQLModel会话生成器
         """
         return Session(self.engine)
 
     async def health_check(self) -> bool:
-        """Check database connection health.
+        """检查数据库连接健康状况。
 
         Returns:
-            bool: True if database is healthy, False otherwise
+            bool: 如果数据库健康则返回True，否则返回False
         """
         try:
             with Session(self.engine) as session:
-                # Execute a simple query to check connection
+                # 执行简单查询以检查连接
                 session.exec(select(1)).first()
                 return True
         except Exception as e:
@@ -247,5 +247,5 @@ class DatabaseService:
             return False
 
 
-# Create a singleton instance
+# 创建单例实例
 database_service = DatabaseService()

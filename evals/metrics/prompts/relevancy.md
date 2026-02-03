@@ -1,25 +1,25 @@
-Evaluate the relevancy of the generation on a continuous scale from 0 to 1.
+在 0 到 1 的连续量表上评估生成内容的相关性。
 
-## Scoring Criteria
-A generation can be considered relevant (Score: 1) if it:
-- Directly addresses the user's specific question or request
-- Provides information that is pertinent to the query
-- Stays on topic without introducing unrelated information
-- Addresses all aspects of the query that require attention
-- Avoids tangential or off-topic discussions
+## 评分标准
+如果生成内容符合以下情况，可被视为相关（得分：1）：
+- 直接回答用户的具体问题或请求
+- 提供与查询相关的信息
+- 保持主题不引入无关信息
+- 解决查询中需要关注的所有方面
+- 避免离题或偏离主题的讨论
 
-## Example
+## 示例
 
-### Input
-Can eating carrots improve your vision?
+### 输入
+吃胡萝卜能改善视力吗？
 
-### Output
-Carrots are root vegetables that come in various colors including orange, purple, red, and yellow. They were first cultivated in Afghanistan around 900 AD. Carrots are a great source of fiber and contain about 88% water. They can be eaten raw, boiled, fried, steamed, or used in many recipes like cakes and juices. Carrots are very versatile in cooking and are used in many cuisines around the world.
+### 输出
+胡萝卜是根茎类蔬菜，有多种颜色，包括橙色、紫色、红色和黄色。它们最早在公元 900 年左右在阿富汗种植。胡萝卜是纤维的绝佳来源，含有约 88% 的水分。它们可以生吃、煮熟、油炸、蒸或用于许多食谱中，如蛋糕和果汁。胡萝卜在烹饪中用途广泛，在世界各地的许多菜系中都有使用。
 
-### Evaluation
-**Score**: 0.3
+### 评估
+**得分**：0.3
 
-**Reasoning**: While the output provides factual information about carrots, it fails to address the specific question about whether carrots can improve vision. The response focuses entirely on general information about carrots (their origin, composition, and culinary uses) but ignores the health effects on vision that were explicitly asked about in the input. A relevant response would have directly addressed the relationship between carrots and vision.
+**推理**：虽然输出提供了关于胡萝卜的事实信息，但它未能回答关于胡萝卜是否能改善视力的具体问题。该响应完全专注于关于胡萝卜的一般信息（它们的起源、成分和烹饪用途），但忽略了输入中明确询问的关于视力的健康影响。相关的响应应该直接解决胡萝卜与视力之间的关系。
 
-## Instructions
-Think step by step.
+## 指令
+逐步思考。

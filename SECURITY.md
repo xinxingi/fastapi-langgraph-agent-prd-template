@@ -1,21 +1,19 @@
-# Security Policy
+# 安全策略
 
-## Supported Versions
+## 支持的版本
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+使用本节告知用户您的项目中哪些版本当前正在接受安全更新支持。
 
-| Version | Supported          |
+| 版本    | 支持状态           |
 | ------- | ------------------ |
 | 5.1.x   | :white_check_mark: |
 | 5.0.x   | :x:                |
 | 4.0.x   | :white_check_mark: |
 | < 4.0   | :x:                |
 
-## Reporting a Vulnerability
+## 报告漏洞
 
-Use this section to tell people how to report a vulnerability.
+使用本节告知用户如何报告漏洞。
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+告诉他们应该去哪里报告，他们可以多久获得一次已报告漏洞的更新，
+如果漏洞被接受或拒绝会发生什么等。

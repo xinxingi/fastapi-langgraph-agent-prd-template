@@ -1,4 +1,4 @@
-"""This file contains the graph utilities for the application."""
+"""此文件包含应用程序的图工具。"""
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
@@ -10,43 +10,43 @@ from app.schemas import Message
 
 
 def dump_messages(messages: list[Message]) -> list[dict]:
-    """Dump the messages to a list of dictionaries.
+    """将消息转储为字典列表。
 
     Args:
-        messages (list[Message]): The messages to dump.
+        messages (list[Message]): 要转储的消息。
 
     Returns:
-        list[dict]: The dumped messages.
+        list[dict]: 转储后的消息。
     """
     return [message.model_dump() for message in messages]
 
 
 def process_llm_response(response: BaseMessage) -> BaseMessage:
-    """Process LLM response to handle structured content blocks (e.g., from GPT-5 models).
+    """处理LLM响应以处理结构化内容块（例如，来自GPT-5模型）。
 
-    GPT-5 models return content as a list of blocks like:
+    GPT-5模型以如下格式返回内容块列表：
     [
         {'id': '...', 'summary': [], 'type': 'reasoning'},
         {'type': 'text', 'text': 'actual response'}
     ]
 
-    This function extracts the actual text content from such structures.
+    此函数从这种结构中提取实际的文本内容。
 
     Args:
-        response: The raw response from the LLM
+        response: LLM的原始响应
 
     Returns:
-        BaseMessage with processed content
+        处理后内容的BaseMessage
     """
     if isinstance(response.content, list):
-        # Extract text from content blocks
+        # 从内容块中提取文本
         text_parts = []
         for block in response.content:
             if isinstance(block, dict):
-                # Handle text blocks
+                # 处理文本块
                 if block.get("type") == "text" and "text" in block:
                     text_parts.append(block["text"])
-                # Log reasoning blocks for debugging
+                # 记录推理块以供调试
                 elif block.get("type") == "reasoning":
                     logger.debug(
                         "reasoning_block_received",
@@ -56,7 +56,7 @@ def process_llm_response(response: BaseMessage) -> BaseMessage:
             elif isinstance(block, str):
                 text_parts.append(block)
 
-        # Join all text parts
+        # 连接所有文本部分
         response.content = "".join(text_parts)
         logger.debug(
             "processed_structured_content",
@@ -68,15 +68,15 @@ def process_llm_response(response: BaseMessage) -> BaseMessage:
 
 
 def prepare_messages(messages: list[Message], llm: BaseChatModel, system_prompt: str) -> list[Message]:
-    """Prepare the messages for the LLM.
+    """为LLM准备消息。
 
     Args:
-        messages (list[Message]): The messages to prepare.
-        llm (BaseChatModel): The LLM to use.
-        system_prompt (str): The system prompt to use.
+        messages (list[Message]): 要准备的消息。
+        llm (BaseChatModel): 要使用的LLM。
+        system_prompt (str): 要使用的系统提示词。
 
     Returns:
-        list[Message]: The prepared messages.
+        list[Message]: 准备好的消息。
     """
     try:
         trimmed_messages = _trim_messages(
@@ -89,14 +89,14 @@ def prepare_messages(messages: list[Message], llm: BaseChatModel, system_prompt:
             allow_partial=False,
         )
     except ValueError as e:
-        # Handle unrecognized content blocks (e.g., reasoning blocks from GPT-5)
+        # 处理无法识别的内容块（例如，来自GPT-5的推理块）
         if "Unrecognized content block type" in str(e):
             logger.warning(
                 "token_counting_failed_skipping_trim",
                 error=str(e),
                 message_count=len(messages),
             )
-            # Skip trimming and return all messages
+            # 跳过修剪并返回所有消息
             trimmed_messages = messages
         else:
             raise
