@@ -6,7 +6,7 @@ from langchain_core.messages import trim_messages as _trim_messages
 
 from app.core.config import settings
 from app.core.logging import logger
-from app.schemas import Message
+from app.business.chatbot.schemas import Message
 
 
 def dump_messages(messages: list[Message]) -> list[dict]:

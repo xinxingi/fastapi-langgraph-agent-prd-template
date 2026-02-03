@@ -30,7 +30,6 @@ from app.core.middleware import (
     LoggingContextMiddleware,
     MetricsMiddleware,
 )
-from app.services.database import database_service
 
 # 加载环境变量
 load_dotenv()
@@ -148,18 +147,12 @@ async def health_check(request: Request) -> Dict[str, Any]:
     """
     logger.info("health_check_called")
 
-    # 检查数据库连接
-    db_healthy = await database_service.health_check()
-
     response = {
-        "status": "healthy" if db_healthy else "degraded",
+        "status": "healthy",
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT.value,
-        "components": {"api": "healthy", "database": "healthy" if db_healthy else "unhealthy"},
+        "components": {"api": "healthy"},
         "timestamp": datetime.now().isoformat(),
     }
 
-    # 如果数据库不健康，设置适当的状态码
-    status_code = status.HTTP_200_OK if db_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
-
-    return JSONResponse(content=response, status_code=status_code)
+    return JSONResponse(content=response, status_code=status.HTTP_200_OK)

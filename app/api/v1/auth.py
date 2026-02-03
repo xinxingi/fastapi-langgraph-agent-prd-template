@@ -1,155 +1,26 @@
-"""API 的身份验证和授权端点。
+"""框架层认证 API 端点。
 
-此模块提供用户注册、登录、会话管理和令牌验证的端点。
+此模块提供用户注册、登录和 Token 管理的端点。
 """
 
-import uuid
-from typing import List
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    Form,
-    HTTPException,
-    Request,
-)
-from fastapi.security import (
-    HTTPAuthorizationCredentials,
-    HTTPBearer,
-)
-
-from app.core.config import settings
-from app.core.limiter import limiter
-from app.core.logging import (
-    bind_context,
-    logger,
-)
-from app.models.session import Session
-from app.models.user import User
-from app.schemas.auth import (
-    SessionResponse,
+from app.core.auth.dependencies import get_current_user
+from app.core.auth.models import BaseUser
+from app.core.auth.schemas import (
+    BearerTokenCreate,
+    BearerTokenResponse,
     TokenResponse,
     UserCreate,
     UserResponse,
 )
-from app.services.database import DatabaseService
-from app.utils.auth import (
-    create_access_token,
-    verify_token,
-)
-from app.utils.sanitization import (
-    sanitize_email,
-    sanitize_string,
-    validate_password_strength,
-)
+from app.core.auth.service import auth_service
+from app.core.config import settings
+from app.core.limiter import limiter
+from app.core.logging import bind_context, logger
+from app.utils.sanitization import sanitize_email, sanitize_string, validate_password_strength
 
 router = APIRouter()
-security = HTTPBearer()
-db_service = DatabaseService()
-
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> User:
-    """从令牌中获取当前用户 ID。
-
-    参数:
-        credentials: 包含 JWT 令牌的 HTTP 授权凭据。
-
-    返回:
-        User: 从令牌中提取的用户。
-
-    异常:
-        HTTPException: 如果令牌无效或缺失。
-    """
-    try:
-        # Sanitize token
-        token = sanitize_string(credentials.credentials)
-
-        user_id = verify_token(token)
-        if user_id is None:
-            logger.error("invalid_token", token_part=token[:10] + "...")
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # 验证用户在数据库中存在
-        user_id_int = int(user_id)
-        user = await db_service.get_user(user_id_int)
-        if user is None:
-            logger.error("user_not_found", user_id=user_id_int)
-            raise HTTPException(
-                status_code=404,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # 将 user_id 绑定到日志上下文，用于此请求中所有后续日志
-        bind_context(user_id=user_id_int)
-
-        return user
-    except ValueError as ve:
-        logger.error("token_validation_failed", error=str(ve), exc_info=True)
-        raise HTTPException(
-            status_code=422,
-            detail="Invalid token format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-async def get_current_session(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> Session:
-    """从令牌中获取当前会话 ID。
-
-    参数:
-        credentials: 包含 JWT 令牌的 HTTP 授权凭据。
-
-    返回:
-        Session: 从令牌中提取的会话。
-
-    异常:
-        HTTPException: 如果令牌无效或缺失。
-    """
-    try:
-        # Sanitize token
-        token = sanitize_string(credentials.credentials)
-
-        session_id = verify_token(token)
-        if session_id is None:
-            logger.error("session_id_not_found", token_part=token[:10] + "...")
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # 在使用之前清理 session_id
-        session_id = sanitize_string(session_id)
-
-        # 验证会话在数据库中存在
-        session = await db_service.get_session(session_id)
-        if session is None:
-            logger.error("session_not_found", session_id=session_id)
-            raise HTTPException(
-                status_code=404,
-                detail="Session not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # 将 user_id 绑定到日志上下文，用于此请求中所有后续日志
-        bind_context(user_id=session.user_id)
-
-        return session
-    except ValueError as ve:
-        logger.error("token_validation_failed", error=str(ve), exc_info=True)
-        raise HTTPException(
-            status_code=422,
-            detail="Invalid token format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
 
 @router.post("/register", response_model=UserResponse)
@@ -157,12 +28,12 @@ async def get_current_session(
 async def register_user(request: Request, user_data: UserCreate):
     """注册新用户。
 
-    参数:
+    Args:
         request: 用于速率限制的 FastAPI 请求对象。
         user_data: 用户注册数据
 
-    返回:
-        UserResponse: 创建的用户信息
+    Returns:
+        UserResponse: 创建的用户信息和 API Token
     """
     try:
         # 清理电子邮件
@@ -173,14 +44,19 @@ async def register_user(request: Request, user_data: UserCreate):
         validate_password_strength(password)
 
         # 检查用户是否存在
-        if await db_service.get_user_by_email(sanitized_email):
+        if await auth_service.get_user_by_email(sanitized_email):
             raise HTTPException(status_code=400, detail="Email already registered")
 
         # 创建用户
-        user = await db_service.create_user(email=sanitized_email, password=User.hash_password(password))
+        user = await auth_service.create_user(email=sanitized_email, password=BaseUser.hash_password(password))
 
-        # 创建访问令牌
-        token = create_access_token(str(user.id))
+        # 创建 Bearer Token（默认 90 天有效期）
+        bearer_token, raw_token = await auth_service.create_bearer_token(user.id, name="Default Token")
+
+        # 构造响应
+        from app.core.auth.schemas import Token
+
+        token = Token(access_token=raw_token, token_type="bearer", expires_at=bearer_token.expires_at)
 
         return UserResponse(id=user.id, email=user.email, token=token)
     except ValueError as ve:
@@ -191,20 +67,23 @@ async def register_user(request: Request, user_data: UserCreate):
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["login"][0])
 async def login(
-    request: Request, username: str = Form(...), password: str = Form(...), grant_type: str = Form(default="password")
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    grant_type: str = Form(default="password"),
 ):
     """用户登录。
 
-    参数:
+    Args:
         request: 用于速率限制的 FastAPI 请求对象。
         username: 用户的电子邮件
         password: 用户的密码
         grant_type: 必须是 "password"
 
-    返回:
-        TokenResponse: 访问令牌信息
+    Returns:
+        TokenResponse: API Token 信息
 
-    异常:
+    Raises:
         HTTPException: 如果凭据无效
     """
     try:
@@ -220,7 +99,7 @@ async def login(
                 detail="Unsupported grant type. Must be 'password'",
             )
 
-        user = await db_service.get_user_by_email(username)
+        user = await auth_service.get_user_by_email(username)
         if not user or not user.verify_password(password):
             raise HTTPException(
                 status_code=401,
@@ -228,132 +107,83 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        token = create_access_token(str(user.id))
-        return TokenResponse(access_token=token.access_token, token_type="bearer", expires_at=token.expires_at)
+        if not user.is_active:
+            raise HTTPException(
+                status_code=401,
+                detail="User account is inactive",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # 创建新的 Bearer Token
+        bearer_token, raw_token = await auth_service.create_bearer_token(user.id, name="Login Token")
+
+        return TokenResponse(access_token=raw_token, token_type="bearer", expires_at=bearer_token.expires_at)
     except ValueError as ve:
         logger.error("login_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.post("/session", response_model=SessionResponse)
-async def create_session(user: User = Depends(get_current_user)):
-    """为已认证的用户创建新的聊天会话。
+@router.post("/tokens", response_model=BearerTokenResponse)
+async def create_bearer_token(token_data: BearerTokenCreate, current_user: BaseUser = Depends(get_current_user)):
+    """为已认证用户创建新的 API Token。
 
-    参数:
-        user: 已认证的用户
+    Args:
+        token_data: Token 创建参数
+        current_user: 已认证的用户
 
-    返回:
-        SessionResponse: 会话 ID、名称和访问令牌
+    Returns:
+        BearerTokenResponse: 创建的 Token 信息（包含原始 Token 字符串）
     """
     try:
-        # 生成唯一的会话 ID
-        session_id = str(uuid.uuid4())
-
-        # 在数据库中创建会话
-        session = await db_service.create_session(session_id, user.id)
-
-        # 为会话创建访问令牌
-        token = create_access_token(session_id)
-
-        logger.info(
-            "session_created",
-            session_id=session_id,
-            user_id=user.id,
-            name=session.name,
-            expires_at=token.expires_at.isoformat(),
+        bearer_token, raw_token = await auth_service.create_bearer_token(
+            current_user.id, name=token_data.name, expires_in_days=token_data.expires_in_days
         )
 
-        return SessionResponse(session_id=session_id, name=session.name, token=token)
+        logger.info(
+            "bearer_token_created",
+            user_id=current_user.id,
+            token_id=bearer_token.id,
+            name=bearer_token.name,
+        )
+
+        return BearerTokenResponse(
+            id=bearer_token.id,
+            name=bearer_token.name,
+            token=raw_token,
+            expires_at=bearer_token.expires_at,
+            created_at=bearer_token.created_at,
+        )
     except ValueError as ve:
-        logger.error("session_creation_validation_failed", error=str(ve), user_id=user.id, exc_info=True)
+        logger.error("token_creation_validation_failed", error=str(ve), user_id=current_user.id, exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.patch("/session/{session_id}/name", response_model=SessionResponse)
-async def update_session_name(
-    session_id: str, name: str = Form(...), current_session: Session = Depends(get_current_session)
-):
-    """更新会话的名称。
+@router.delete("/tokens/{token_id}")
+async def revoke_bearer_token(token_id: int, current_user: BaseUser = Depends(get_current_user)):
+    """撤销已认证用户的 API Token。
 
-    参数:
-        session_id: 要更新的会话 ID
-        name: 会话的新名称
-        current_session: 来自身份验证的当前会话
+    Args:
+        token_id: 要撤销的 Token ID
+        current_user: 已认证的用户
 
-    返回:
-        SessionResponse: 更新后的会话信息
+    Returns:
+        dict: 操作结果消息
     """
     try:
-        # 清理输入
-        sanitized_session_id = sanitize_string(session_id)
-        sanitized_name = sanitize_string(name)
-        sanitized_current_session = sanitize_string(current_session.id)
+        success = await auth_service.revoke_bearer_token(token_id, current_user.id)
 
-        # 验证会话 ID 是否与已认证的会话匹配
-        if sanitized_session_id != sanitized_current_session:
-            raise HTTPException(status_code=403, detail="Cannot modify other sessions")
+        if not success:
+            raise HTTPException(status_code=404, detail="Token not found or does not belong to you")
 
-        # 更新会话名称
-        session = await db_service.update_session_name(sanitized_session_id, sanitized_name)
+        logger.info("bearer_token_revoked", token_id=token_id, user_id=current_user.id)
 
-        # 创建新令牌（虽然不是严格必要，但保持一致性）
-        token = create_access_token(sanitized_session_id)
-
-        return SessionResponse(session_id=sanitized_session_id, name=session.name, token=token)
+        return {"message": "Token revoked successfully"}
     except ValueError as ve:
-        logger.error("session_update_validation_failed", error=str(ve), session_id=session_id, exc_info=True)
-        raise HTTPException(status_code=422, detail=str(ve))
-
-
-@router.delete("/session/{session_id}")
-async def delete_session(session_id: str, current_session: Session = Depends(get_current_session)):
-    """删除已认证用户的会话。
-
-    参数:
-        session_id: 要删除的会话 ID
-        current_session: 来自身份验证的当前会话
-
-    返回:
-        None
-    """
-    try:
-        # 清理输入
-        sanitized_session_id = sanitize_string(session_id)
-        sanitized_current_session = sanitize_string(current_session.id)
-
-        # 验证会话 ID 是否与已认证的会话匹配
-        if sanitized_session_id != sanitized_current_session:
-            raise HTTPException(status_code=403, detail="Cannot delete other sessions")
-
-        # 删除会话
-        await db_service.delete_session(sanitized_session_id)
-
-        logger.info("session_deleted", session_id=session_id, user_id=current_session.user_id)
-    except ValueError as ve:
-        logger.error("session_deletion_validation_failed", error=str(ve), session_id=session_id, exc_info=True)
-        raise HTTPException(status_code=422, detail=str(ve))
-
-
-@router.get("/sessions", response_model=List[SessionResponse])
-async def get_user_sessions(user: User = Depends(get_current_user)):
-    """获取已认证用户的所有会话 ID。
-
-    参数:
-        user: 已认证的用户
-
-    返回:
-        List[SessionResponse]: 会话 ID 列表
-    """
-    try:
-        sessions = await db_service.get_user_sessions(user.id)
-        return [
-            SessionResponse(
-                session_id=sanitize_string(session.id),
-                name=sanitize_string(session.name),
-                token=create_access_token(session.id),
-            )
-            for session in sessions
-        ]
-    except ValueError as ve:
-        logger.error("get_sessions_validation_failed", user_id=user.id, error=str(ve), exc_info=True)
+        logger.error(
+            "token_revocation_validation_failed",
+            error=str(ve),
+            token_id=token_id,
+            user_id=current_user.id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=422, detail=str(ve))

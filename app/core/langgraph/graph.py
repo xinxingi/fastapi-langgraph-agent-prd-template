@@ -38,12 +38,10 @@ from app.core.langgraph.tools import tools
 from app.core.logging import logger
 from app.core.metrics import llm_inference_duration_seconds
 from app.core.prompts import load_system_prompt
-from app.schemas import (
-    GraphState,
-    Message,
-)
-from app.services.llm import llm_service
-from app.utils import (
+from app.business.chatbot.schemas import Message
+from app.core.schemas import GraphState
+from app.core.services.llm import llm_service
+from app.utils.graph import (
     dump_messages,
     prepare_messages,
     process_llm_response,

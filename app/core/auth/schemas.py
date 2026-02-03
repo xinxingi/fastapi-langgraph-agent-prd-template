@@ -1,43 +1,40 @@
-"""此文件包含应用程序的认证schema。"""
+"""框架层认证 Schema。
+
+此文件定义了用户注册、登录、Token 响应等 Pydantic 模型。
+"""
 
 import re
 from datetime import datetime
 
-from pydantic import (
-    BaseModel,
-    EmailStr,
-    Field,
-    SecretStr,
-    field_validator,
-)
+from pydantic import BaseModel, EmailStr, Field, SecretStr, field_validator
 
 
 class Token(BaseModel):
-    """认证的Token模型。
+    """Token 模型。
 
     Attributes:
-        access_token: JWT访问令牌。
-        token_type: 令牌类型（始终为"bearer"）。
-        expires_at: 令牌过期时间戳。
+        access_token: API Token 字符串
+        token_type: Token 类型（始终为 "bearer"）
+        expires_at: Token 过期时间戳
     """
 
-    access_token: str = Field(..., description="JWT访问令牌")
-    token_type: str = Field(default="bearer", description="令牌类型")
-    expires_at: datetime = Field(..., description="令牌过期时间戳")
+    access_token: str = Field(..., description="API Token 字符串")
+    token_type: str = Field(default="bearer", description="Token 类型")
+    expires_at: datetime = Field(..., description="Token 过期时间戳")
 
 
 class TokenResponse(BaseModel):
     """登录端点的响应模型。
 
     Attributes:
-        access_token: JWT访问令牌
-        token_type: 令牌类型（始终为"bearer"）
-        expires_at: 令牌过期时间
+        access_token: API Token 字符串
+        token_type: Token 类型（始终为 "bearer"）
+        expires_at: Token 过期时间
     """
 
-    access_token: str = Field(..., description="JWT访问令牌")
-    token_type: str = Field(default="bearer", description="令牌类型")
-    expires_at: datetime = Field(..., description="令牌过期时间")
+    access_token: str = Field(..., description="API Token 字符串")
+    token_type: str = Field(default="bearer", description="Token 类型")
+    expires_at: datetime = Field(..., description="Token 过期时间")
 
 
 class UserCreate(BaseModel):
@@ -67,7 +64,6 @@ class UserCreate(BaseModel):
         """
         password = v.get_secret_value()
 
-        # 检查常见的密码要求
         if len(password) < 8:
             raise ValueError("密码长度至少为8个字符")
 
@@ -100,30 +96,31 @@ class UserResponse(BaseModel):
     token: Token = Field(..., description="认证令牌")
 
 
-class SessionResponse(BaseModel):
-    """会话创建的响应模型。
+class BearerTokenCreate(BaseModel):
+    """创建 API Token 的请求模型。
 
     Attributes:
-        session_id: 聊天会话的唯一标识符
-        name: 会话名称（默认为空字符串）
-        token: 会话的认证令牌
+        name: Token 名称（用于识别）
+        expires_in_days: Token 有效期（天数），默认 90 天
     """
 
-    session_id: str = Field(..., description="聊天会话的唯一标识符")
-    name: str = Field(default="", description="会话名称", max_length=100)
-    token: Token = Field(..., description="会话的认证令牌")
+    name: str = Field(..., description="Token 名称", max_length=100)
+    expires_in_days: int = Field(default=90, description="Token 有效期（天数）", ge=1, le=365)
 
-    @field_validator("name")
-    @classmethod
-    def sanitize_name(cls, v: str) -> str:
-        """清理会话名称。
 
-        Args:
-            v: 要清理的名称
+class BearerTokenResponse(BaseModel):
+    """创建 API Token 的响应模型。
 
-        Returns:
-            str: 清理后的名称
-        """
-        # 移除任何可能有害的字符
-        sanitized = re.sub(r'[<>{}[\]()\'"`]', "", v)
-        return sanitized
+    Attributes:
+        id: Token ID
+        name: Token 名称
+        token: 原始 Token 字符串（仅在创建时返回一次）
+        expires_at: 过期时间
+        created_at: 创建时间
+    """
+
+    id: int = Field(..., description="Token ID")
+    name: str = Field(..., description="Token 名称")
+    token: str = Field(..., description="原始 Token 字符串（仅在创建时返回一次）")
+    expires_at: datetime = Field(..., description="过期时间")
+    created_at: datetime = Field(..., description="创建时间")
