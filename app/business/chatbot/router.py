@@ -1,11 +1,10 @@
-"""用于处理聊天交互的聊天机器人 API 端点。
+"""聊天机器人业务模块 - 路由定义。
 
 此模块提供聊天交互的端点，包括常规聊天、
 流式聊天、消息历史管理和聊天历史清除。
 """
 
 import json
-from typing import List
 
 from fastapi import (
     APIRouter,
@@ -25,7 +24,6 @@ from app.models.session import Session
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
-    Message,
     StreamResponse,
 )
 
@@ -66,7 +64,7 @@ async def chat(
 
         return ChatResponse(messages=result)
     except Exception as e:
-        logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.exception("chat_request_failed", session_id=session.id, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -121,11 +119,10 @@ async def chat_stream(
                 yield f"data: {json.dumps(final_response.model_dump())}\n\n"
 
             except Exception as e:
-                logger.error(
+                logger.exception(
                     "stream_chat_request_failed",
                     session_id=session.id,
                     error=str(e),
-                    exc_info=True,
                 )
                 error_response = StreamResponse(content=str(e), done=True)
                 yield f"data: {json.dumps(error_response.model_dump())}\n\n"
@@ -133,11 +130,10 @@ async def chat_stream(
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 
     except Exception as e:
-        logger.error(
+        logger.exception(
             "stream_chat_request_failed",
             session_id=session.id,
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -164,7 +160,7 @@ async def get_session_messages(
         messages = await agent.get_chat_history(session.id)
         return ChatResponse(messages=messages)
     except Exception as e:
-        logger.error("get_messages_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.exception("get_messages_failed", session_id=session.id, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -187,5 +183,5 @@ async def clear_chat_history(
         await agent.clear_chat_history(session.id)
         return {"message": "Chat history cleared successfully"}
     except Exception as e:
-        logger.error("clear_chat_history_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.exception("clear_chat_history_failed", session_id=session.id, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
