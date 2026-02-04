@@ -63,7 +63,7 @@ async def get_current_user(
             logger.error("invalid_token", token_prefix=token[:10] + "...")
             raise HTTPException(
                 status_code=401,
-                detail="Invalid authentication credentials",
+                detail="无效的身份验证凭据",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -75,6 +75,6 @@ async def get_current_user(
         logger.error("token_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(
             status_code=422,
-            detail="Invalid token format",
+            detail="无效的 token 格式",
             headers={"WWW-Authenticate": "Bearer"},
         )

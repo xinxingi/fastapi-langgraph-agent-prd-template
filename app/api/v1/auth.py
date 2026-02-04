@@ -49,7 +49,7 @@ async def register_user(request: Request, user_data: UserCreate):
 
         # 检查用户是否存在
         if await auth_service.get_user_by_email(sanitized_email):
-            raise HTTPException(status_code=400, detail="Email already registered")
+            raise HTTPException(status_code=400, detail="该邮箱已被注册")
 
         # 创建用户
         user = await auth_service.create_user(email=sanitized_email, password=BaseUser.hash_password(password))
@@ -94,21 +94,21 @@ async def login(
         if grant_type != "password":
             raise HTTPException(
                 status_code=400,
-                detail="Unsupported grant type. Must be 'password'",
+                detail="不支持的授权类型，必须是 'password'",
             )
 
         user = await auth_service.get_user_by_email(username)
         if not user or not user.verify_password(password):
             raise HTTPException(
                 status_code=401,
-                detail="Incorrect email or password",
+                detail="邮箱或密码错误",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
         if not user.is_active:
             raise HTTPException(
                 status_code=401,
-                detail="User account is inactive",
+                detail="用户账户未激活",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -178,7 +178,7 @@ async def revoke_api_key(token_id: int, current_user: BaseUser = Depends(get_cur
         success = await auth_service.revoke_bearer_token(token_id, current_user.id)
 
         if not success:
-            raise HTTPException(status_code=404, detail="API Key not found or does not belong to you")
+            raise HTTPException(status_code=404, detail="API Key 不存在或不属于您")
 
         logger.info("api_key_revoked", api_key_id=token_id, user_id=current_user.id)
 
@@ -242,7 +242,7 @@ async def update_api_key(token_id: int, update_data: ApiKeyUpdate, current_user:
         api_key = await auth_service.update_api_key_expiry(token_id, current_user.id, update_data.expires_in_days)
 
         if not api_key:
-            raise HTTPException(status_code=404, detail="API Key not found or does not belong to you")
+            raise HTTPException(status_code=404, detail="API Key 不存在或不属于您")
 
         logger.info(
             "api_key_updated",
