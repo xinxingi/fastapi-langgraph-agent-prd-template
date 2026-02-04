@@ -36,9 +36,34 @@
         </template>
       </el-alert>
 
+      <!-- 搜索和筛选 -->
+      <div style="margin-bottom: 16px; display: flex; gap: 16px">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索 API Key 名称"
+          clearable
+          style="max-width: 300px"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-select
+          v-model="statusFilter"
+          placeholder="按状态筛选"
+          clearable
+          style="width: 150px"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="有效" value="valid" />
+          <el-option label="已过期" value="expired" />
+          <el-option label="已撤销" value="revoked" />
+        </el-select>
+      </div>
+
       <!-- API Key 表格 -->
       <el-table
-        :data="apiKeys"
+        :data="filteredApiKeys"
         v-loading="loading"
         style="width: 100%"
         :empty-text="loading ? '加载中...' : '暂无数据'"
@@ -53,6 +78,19 @@
         <el-table-column label="过期时间" width="180">
           <template #default="{ row }">
             {{ formatDate(row.expires_at) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="最后使用" width="180">
+          <template #default="{ row }">
+            {{ row.last_used_at ? formatDate(row.last_used_at) : '从未使用' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="剩余时间" width="150">
+          <template #default="{ row }">
+            <span v-if="row.revoked" style="color: #909399">已撤销</span>
+            <span v-else :style="{ color: isExpired(row.expires_at) ? '#F56C6C' : '#67C23A' }">
+              {{ getTimeRemaining(row.expires_at) }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100">
@@ -93,6 +131,19 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页 -->
+      <el-pagination
+        v-if="total > 0"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :total="total"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        style="margin-top: 20px; justify-content: flex-end"
+        @size-change="handleSizeChange"
+        @current-change="handlePageChange"
+      />
     </el-card>
 
     <!-- 创建 API Key 对话框 -->
@@ -192,13 +243,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/auth'
 import { authService } from '../service'
 import type { ApiKeyResponse, ApiKeyListItem } from '@/core/types'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { format } from 'date-fns'
+import { Search } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -212,6 +264,11 @@ const editDialogVisible = ref(false)
 const createdToken = ref<ApiKeyResponse | null>(null)
 const apiKeys = ref<ApiKeyListItem[]>([])
 const editingKey = ref<ApiKeyListItem | null>(null)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+const searchQuery = ref('')
+const statusFilter = ref('')
 
 const createForm = reactive({
   name: '',
@@ -238,17 +295,56 @@ const editRules: FormRules = {
   ],
 }
 
+// 计算过滤后的 API Key 列表
+const filteredApiKeys = computed(() => {
+  return apiKeys.value.filter(key => {
+    // 按名称搜索
+    const matchesSearch = !searchQuery.value || 
+      key.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    
+    // 按状态筛选
+    let matchesStatus = true
+    if (statusFilter.value) {
+      if (statusFilter.value === 'valid') {
+        matchesStatus = !key.revoked && !isExpired(key.expires_at)
+      } else if (statusFilter.value === 'expired') {
+        matchesStatus = !key.revoked && isExpired(key.expires_at)
+      } else if (statusFilter.value === 'revoked') {
+        matchesStatus = key.revoked
+      }
+    }
+    
+    return matchesSearch && matchesStatus
+  })
+})
+
 // 加载 API Key 列表
 const loadApiKeys = async () => {
   loading.value = true
   try {
-    apiKeys.value = await authService.listTokens()
+    const skip = (currentPage.value - 1) * pageSize.value
+    const response = await authService.listTokens(skip, pageSize.value)
+    apiKeys.value = response.items
+    total.value = response.total
   } catch (error: any) {
     console.error('Failed to load API keys:', error)
     ElMessage.error(error.response?.data?.detail || '加载 API Key 列表失败')
   } finally {
     loading.value = false
   }
+}
+
+// 处理页码变化
+const handlePageChange = (page: number) => {
+  currentPage.value = page
+  loadApiKeys()
+}
+
+// 处理每页数量变化
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  currentPage.value = 1  // 重置到第一页
+  loadApiKeys()
 }
 
 // 打开创建对话框
@@ -285,7 +381,8 @@ const handleCreateToken = async () => {
       createDialogVisible.value = false
       ElMessage.success('API Key 创建成功')
       
-      // 重新加载列表
+      // 重新加载列表，回到第一页
+      currentPage.value = 1
       await loadApiKeys()
     } catch (error: any) {
       console.error('Failed to create API key:', error)
@@ -363,6 +460,38 @@ const formatDate = (dateStr: string) => {
 
 const isExpired = (dateStr: string) => {
   return new Date(dateStr) < new Date()
+}
+
+// 计算并格式化剩余时间
+const getTimeRemaining = (expiresAt: string): string => {
+  const now = new Date()
+  const expiry = new Date(expiresAt)
+  const diffMs = expiry.getTime() - now.getTime()
+
+  if (diffMs <= 0) {
+    return '已过期'
+  }
+
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+
+  if (days > 365) {
+    const years = Math.floor(days / 365)
+    const remainingDays = days % 365
+    return `${years} 年 ${remainingDays} 天`
+  } else if (days > 30) {
+    const months = Math.floor(days / 30)
+    const remainingDays = days % 30
+    return `${months} 个月 ${remainingDays} 天`
+  } else if (days > 0) {
+    return `${days} 天 ${hours} 小时`
+  } else if (hours > 0) {
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+    return `${hours} 小时 ${minutes} 分钟`
+  } else {
+    const minutes = Math.floor(diffMs / (1000 * 60))
+    return `${minutes} 分钟`
+  }
 }
 
 const handleLogout = () => {

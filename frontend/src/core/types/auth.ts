@@ -54,6 +54,14 @@ export interface ApiKeyListItem {
   expires_at: string
   created_at: string
   revoked: boolean
+  last_used_at: string | null
+}
+
+export interface ApiKeyListResponse {
+  items: ApiKeyListItem[]
+  total: number
+  skip: number
+  limit: number
 }
 
 // 保持向后兼容的别名

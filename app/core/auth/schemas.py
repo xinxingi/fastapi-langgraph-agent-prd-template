@@ -195,6 +195,7 @@ class ApiKeyListItem(BaseModel):
         expires_at: 过期时间
         created_at: 创建时间
         revoked: 是否已撤销
+        last_used_at: 最后使用时间（如果从未使用过则为 None）
     """
 
     id: int = Field(..., description="API Key ID")
@@ -202,6 +203,23 @@ class ApiKeyListItem(BaseModel):
     expires_at: datetime = Field(..., description="过期时间")
     created_at: datetime = Field(..., description="创建时间")
     revoked: bool = Field(..., description="是否已撤销")
+    last_used_at: datetime | None = Field(default=None, description="最后使用时间（如果从未使用过则为 None）")
+
+
+class ApiKeyListResponse(BaseModel):
+    """API Key 列表的分页响应模型。
+
+    Attributes:
+        items: API Key 列表
+        total: 总记录数
+        skip: 跳过的记录数
+        limit: 返回的最大记录数
+    """
+
+    items: list[ApiKeyListItem] = Field(..., description="API Key 列表")
+    total: int = Field(..., description="总记录数")
+    skip: int = Field(..., description="跳过的记录数")
+    limit: int = Field(..., description="返回的最大记录数")
 
 
 # 保持向后兼容的别名

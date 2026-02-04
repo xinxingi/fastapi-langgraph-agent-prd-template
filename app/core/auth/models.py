@@ -89,6 +89,7 @@ class ApiKey(BaseModel, table=True):
         token_hash: API Key 的 SHA256 哈希值（唯一）
         expires_at: 过期时间
         revoked: 是否已撤销
+        last_used_at: 最后使用时间（每次认证成功时更新）
         created_at: 创建时间（继承自 BaseModel）
         user: 所属用户（关系字段）
     """
@@ -103,6 +104,7 @@ class ApiKey(BaseModel, table=True):
     )
     expires_at: datetime = Field(sa_column_kwargs={"comment": "过期时间"})
     revoked: bool = Field(default=False, sa_column_kwargs={"comment": "是否已撤销"})
+    last_used_at: Optional[datetime] = Field(default=None, sa_column_kwargs={"comment": "最后使用时间"})
 
     # 关系
     user: BaseUser = Relationship(back_populates="api_keys")

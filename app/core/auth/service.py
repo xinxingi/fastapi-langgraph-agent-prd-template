@@ -200,6 +200,11 @@ class AuthService:
                 logger.warning("api_key_user_inactive", user_id=api_key.user_id)
                 return None
 
+            # 更新最后使用时间
+            api_key.last_used_at = datetime.now(UTC)
+            session.add(api_key)
+            session.commit()
+
             return user
 
     async def revoke_bearer_token(self, token_id: int, user_id: int) -> bool:
@@ -223,22 +228,37 @@ class AuthService:
             logger.info("api_key_revoked", api_key_id=token_id, user_id=user_id)
             return True
 
-    async def get_user_api_keys(self, user_id: int) -> list[ApiKey]:
-        """获取用户的所有 API Key（包括已过期和已撤销的）。
+    async def get_user_api_keys(self, user_id: int, skip: int = 0, limit: int = 100) -> tuple[list[ApiKey], int]:
+        """获取用户的所有 API Key（包括已过期和已撤销的），支持分页。
 
         Args:
             user_id: 用户 ID
+            skip: 跳过的记录数（用于分页）
+            limit: 返回的最大记录数
 
         Returns:
-            list[ApiKey]: API Key 列表
+            tuple[list[ApiKey], int]: (API Key 列表, 总记录数)
         """
         with Session(self.engine) as session:
-            from sqlalchemy import desc
+            from sqlalchemy import desc, func
 
-            statement = select(ApiKey).where(ApiKey.user_id == user_id).order_by(desc(ApiKey.created_at))
+            # 获取总数
+            count_statement = select(func.count(ApiKey.id)).where(ApiKey.user_id == user_id)
+            total = session.exec(count_statement).one()
+
+            # 获取分页数据
+            statement = (
+                select(ApiKey)
+                .where(ApiKey.user_id == user_id)
+                .order_by(desc(ApiKey.created_at))
+                .offset(skip)
+                .limit(limit)
+            )
             api_keys = session.exec(statement).all()
-            logger.info("api_keys_retrieved", user_id=user_id, count=len(api_keys))
-            return list(api_keys)
+            logger.info(
+                "api_keys_retrieved", user_id=user_id, count=len(api_keys), total=total, skip=skip, limit=limit
+            )
+            return list(api_keys), total
 
     async def update_api_key_expiry(self, token_id: int, user_id: int, expires_in_days: int) -> Optional[ApiKey]:
         """更新 API Key 的过期时间。

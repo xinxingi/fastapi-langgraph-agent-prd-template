@@ -11,6 +11,7 @@ from app.core.auth.models import BaseUser
 from app.core.auth.schemas import (
     ApiKeyCreate,
     ApiKeyListItem,
+    ApiKeyListResponse,
     ApiKeyResponse,
     ApiKeyUpdate,
     TokenResponse,
@@ -193,28 +194,36 @@ async def revoke_api_key(token_id: int, current_user: BaseUser = Depends(get_cur
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.get("/list_api_key", response_model=list[ApiKeyListItem])
-async def list_api_key(current_user: BaseUser = Depends(get_current_user)):
-    """获取已认证用户的所有 API Key 列表。
+@router.get("/list_api_key", response_model=ApiKeyListResponse)
+async def list_api_key(skip: int = 0, limit: int = 100, current_user: BaseUser = Depends(get_current_user)):
+    """获取已认证用户的所有 API Key 列表（支持分页）。
 
     Args:
+        skip: 跳过的记录数（用于分页），默认 0
+        limit: 返回的最大记录数，默认 100
         current_user: 已认证的用户
 
     Returns:
-        list[ApiKeyListItem]: API Key 列表（不包含 token 字段）
+        ApiKeyListResponse: 分页的 API Key 列表
     """
-    api_keys = await auth_service.get_user_api_keys(current_user.id)
+    api_keys, total = await auth_service.get_user_api_keys(current_user.id, skip=skip, limit=limit)
 
-    return [
-        ApiKeyListItem(
-            id=key.id,
-            name=key.name or "",
-            expires_at=key.expires_at,
-            created_at=key.created_at,
-            revoked=key.revoked,
-        )
-        for key in api_keys
-    ]
+    return ApiKeyListResponse(
+        items=[
+            ApiKeyListItem(
+                id=key.id,
+                name=key.name or "",
+                expires_at=key.expires_at,
+                created_at=key.created_at,
+                revoked=key.revoked,
+                last_used_at=key.last_used_at,
+            )
+            for key in api_keys
+        ],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.put("/tokens/{token_id}", response_model=ApiKeyListItem)
@@ -248,6 +257,7 @@ async def update_api_key(token_id: int, update_data: ApiKeyUpdate, current_user:
             expires_at=api_key.expires_at,
             created_at=api_key.created_at,
             revoked=api_key.revoked,
+            last_used_at=api_key.last_used_at,
         )
     except ValueError as ve:
         logger.error(

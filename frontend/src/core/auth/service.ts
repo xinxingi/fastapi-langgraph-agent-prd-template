@@ -17,6 +17,7 @@ import type {
   ApiKeyCreate,
   ApiKeyResponse,
   ApiKeyListItem,
+  ApiKeyListResponse,
   ApiKeyUpdate,
 } from '../types'
 
@@ -71,10 +72,12 @@ export class AuthService {
   }
 
   /**
-   * 获取 API Key 列表
+   * 获取 API Key 列表（支持分页）
    */
-  async listTokens(): Promise<ApiKeyListItem[]> {
-    const response = await axios.get<ApiKeyListItem[]>('/api/v1/auth/list_api_key')
+  async listTokens(skip: number = 0, limit: number = 100): Promise<ApiKeyListResponse> {
+    const response = await axios.get<ApiKeyListResponse>('/api/v1/auth/list_api_key', {
+      params: { skip, limit }
+    })
     return response.data
   }
 
