@@ -70,7 +70,7 @@ export class AuthService {
    * 获取 API Key 列表
    */
   async listTokens(): Promise<ApiKeyListItem[]> {
-    const response = await axios.get<ApiKeyListItem[]>('/api/v1/auth/tokens')
+    const response = await axios.get<ApiKeyListItem[]>('/api/v1/auth/list_api_key')
     return response.data
   }
 

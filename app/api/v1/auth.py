@@ -192,8 +192,8 @@ async def revoke_api_key(token_id: int, current_user: BaseUser = Depends(get_cur
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.get("/tokens", response_model=list[ApiKeyListItem])
-async def list_api_keys(current_user: BaseUser = Depends(get_current_user)):
+@router.get("/list_api_key", response_model=list[ApiKeyListItem])
+async def list_api_key(current_user: BaseUser = Depends(get_current_user)):
     """获取已认证用户的所有 API Key 列表。
 
     Args:

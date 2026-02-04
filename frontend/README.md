@@ -119,6 +119,7 @@ VITE_API_BASE_URL=http://localhost:8000
 - `POST /api/v1/auth/register` - 用户注册
 - `POST /api/v1/auth/login` - 用户登录
 - `POST /api/v1/auth/tokens` - 创建 API Key
+- `GET /api/v1/auth/list_api_key` - 获取 API Key 列表
 - `DELETE /api/v1/auth/tokens/{token_id}` - 撤销 API Key
 
 **说明**：所有 Token（JWT 和 API Key）都通过 Bearer 认证方案传输：`Authorization: Bearer <token>`
