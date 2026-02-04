@@ -10,6 +10,7 @@ from app.core.auth.jwt import create_access_token
 from app.core.auth.models import BaseUser
 from app.core.auth.schemas import (
     ApiKeyCreate,
+    ApiKeyListItem,
     ApiKeyResponse,
     TokenResponse,
     UserCreate,
@@ -117,7 +118,7 @@ async def login(
 
         logger.info("user_logged_in", user_id=user.id, email=user.email)
 
-        return TokenResponse(access_token=access_token, token_type="bearer", expires_at=expires_at)
+        return TokenResponse(access_token=access_token, expires_at=expires_at)
     except ValueError as ve:
         logger.error("login_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
@@ -189,3 +190,27 @@ async def revoke_api_key(token_id: int, current_user: BaseUser = Depends(get_cur
             exc_info=True,
         )
         raise HTTPException(status_code=422, detail=str(ve))
+
+
+@router.get("/tokens", response_model=list[ApiKeyListItem])
+async def list_api_keys(current_user: BaseUser = Depends(get_current_user)):
+    """获取已认证用户的所有 API Key 列表。
+
+    Args:
+        current_user: 已认证的用户
+
+    Returns:
+        list[ApiKeyListItem]: API Key 列表（不包含 token 字段）
+    """
+    api_keys = await auth_service.get_user_api_keys(current_user.id)
+
+    return [
+        ApiKeyListItem(
+            id=key.id,
+            name=key.name or "",
+            expires_at=key.expires_at,
+            created_at=key.created_at,
+            revoked=key.revoked,
+        )
+        for key in api_keys
+    ]

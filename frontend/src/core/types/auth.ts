@@ -17,7 +17,6 @@ export interface Token {
 
 export interface TokenResponse {
   access_token: string  // JWT Token
-  token_type: string    // "bearer" - 告诉客户端使用 Bearer 认证方案
   expires_at: string
 }
 
@@ -43,6 +42,14 @@ export interface ApiKeyResponse {
   token: string  // sk-xxx 格式的 API Key
   expires_at: string
   created_at: string
+}
+
+export interface ApiKeyListItem {
+  id: number
+  name: string
+  expires_at: string
+  created_at: string
+  revoked: boolean
 }
 
 // 保持向后兼容的别名

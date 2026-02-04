@@ -4,15 +4,20 @@
       <template #header>
         <div class="card-header">
           <h2>API Key 管理</h2>
-          <el-button type="danger" @click="handleLogout">退出登录</el-button>
+          <div>
+            <el-button type="primary" @click="dialogVisible = true">创建 API Key</el-button>
+            <el-button type="danger" @click="handleLogout">退出登录</el-button>
+          </div>
         </div>
       </template>
 
+      <!-- 新创建的 API Key 提示 -->
       <el-alert
         v-if="createdToken"
         title="API Key 创建成功"
         type="success"
-        :closable="false"
+        :closable="true"
+        @close="createdToken = null"
         style="margin-bottom: 20px"
       >
         <template #default>
@@ -28,26 +33,86 @@
               <el-button @click="copyToken(createdToken.token)">复制</el-button>
             </template>
           </el-input>
-          <p style="margin: 8px 0; font-size: 12px; color: #909399">
-            API Key 名称: {{ createdToken.name }}<br>
-            过期时间: {{ formatDate(createdToken.expires_at) }}<br>
-            使用方式: Authorization: Bearer {{ createdToken.token.substring(0, 15) }}...
-          </p>
         </template>
       </el-alert>
 
+      <!-- API Key 表格 -->
+      <el-table
+        :data="apiKeys"
+        v-loading="loading"
+        style="width: 100%"
+        :empty-text="loading ? '加载中...' : '暂无数据'"
+      >
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="name" label="名称" min-width="150" />
+        <el-table-column label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatDate(row.created_at) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="过期时间" width="180">
+          <template #default="{ row }">
+            {{ formatDate(row.expires_at) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.revoked" type="danger">已撤销</el-tag>
+            <el-tag v-else-if="isExpired(row.expires_at)" type="warning">已过期</el-tag>
+            <el-tag v-else type="success">有效</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="Key" min-width="200">
+          <template #default="{ row }">
+            <span style="font-family: monospace; color: #909399; font-size: 12px">
+              {{ row.revoked ? '已撤销' : 'sk-***...' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="!row.revoked"
+              type="primary"
+              size="small"
+              link
+              @click="handleCopy(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-if="!row.revoked"
+              type="danger"
+              size="small"
+              link
+              @click="handleRevoke(row)"
+            >
+              删除
+            </el-button>
+            <span v-else style="color: #909399; font-size: 12px">-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <!-- 创建 API Key 对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      title="创建 API Key"
+      width="500px"
+      :close-on-click-modal="false"
+    >
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
         label-width="140px"
-        style="max-width: 600px"
       >
         <el-form-item label="API Key 名称" prop="name">
           <el-input
             v-model="form.name"
             placeholder="例如：开发环境 API Key"
-            :disabled="loading"
+            :disabled="submitLoading"
           />
         </el-form-item>
 
@@ -56,57 +121,47 @@
             v-model="form.expires_in_days"
             :min="1"
             :max="27000"
-            :disabled="loading"
+            :disabled="submitLoading"
+            style="width: 100%"
           />
-          <span style="margin-left: 8px; color: #909399; font-size: 12px">
+          <div style="margin-top: 8px; color: #909399; font-size: 12px">
             默认 90 天，最长可设置到 2099 年
-          </span>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button
-            type="primary"
-            :loading="loading"
-            @click="handleCreateToken"
-          >
-            创建 API Key
-          </el-button>
-          <el-button @click="resetForm">重置</el-button>
+          </div>
         </el-form-item>
       </el-form>
 
-      <el-divider />
-
-      <div class="info-section">
-        <h3>什么是 API Key？</h3>
-        <p>API Key 是长期有效的密钥（sk-xxx 格式），用于服务器到服务器的 API 调用。</p>
-        <p><strong>与 JWT Token 的区别：</strong></p>
-        <ul>
-          <li><strong>JWT Token</strong>：登录后获得的短期会话令牌（30天），用于前端访问</li>
-          <li><strong>API Key</strong>：长期有效的密钥（默认90天），用于后端服务集成</li>
-        </ul>
-        <p><strong>使用方式：</strong>两者都通过 Bearer 认证方案传递</p>
-        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">Authorization: Bearer sk-xxxxxxxxxx</pre>
-      </div>
-    </el-card>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleCreateToken"
+        >
+          创建
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/auth'
-import { useTokenManagement } from '../composables/useTokenManagement'
-import type { ApiKeyResponse } from '@/core/types'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { authService } from '../service'
+import type { ApiKeyResponse, ApiKeyListItem } from '@/core/types'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { format } from 'date-fns'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { loading, createToken } = useTokenManagement()
 
 const formRef = ref<FormInstance>()
+const loading = ref(false)
+const submitLoading = ref(false)
+const dialogVisible = ref(false)
 const createdToken = ref<ApiKeyResponse | null>(null)
+const apiKeys = ref<ApiKeyListItem[]>([])
 
 const form = reactive({
   name: '',
@@ -123,22 +178,77 @@ const rules: FormRules = {
   ],
 }
 
+// 加载 API Key 列表
+const loadApiKeys = async () => {
+  loading.value = true
+  try {
+    apiKeys.value = await authService.listTokens()
+  } catch (error: any) {
+    console.error('Failed to load API keys:', error)
+    ElMessage.error(error.response?.data?.detail || '加载 API Key 列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 创建 API Key
 const handleCreateToken = async () => {
   if (!formRef.value) return
 
   await formRef.value.validate(async (valid) => {
     if (!valid) return
 
-    const result = await createToken({
-      name: form.name,
-      expires_in_days: form.expires_in_days,
-    })
+    submitLoading.value = true
+    try {
+      const result = await authService.createToken({
+        name: form.name,
+        expires_in_days: form.expires_in_days,
+      })
 
-    if (result) {
       createdToken.value = result
+      dialogVisible.value = false
       resetForm()
+      ElMessage.success('API Key 创建成功')
+      
+      // 重新加载列表
+      await loadApiKeys()
+    } catch (error: any) {
+      console.error('Failed to create API key:', error)
+      ElMessage.error(error.response?.data?.detail || '创建 API Key 失败')
+    } finally {
+      submitLoading.value = false
     }
   })
+}
+
+// 撤销 API Key
+const handleRevoke = async (row: ApiKeyListItem) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除 API Key "${row.name}" 吗？删除后将无法恢复。`,
+      '确认删除',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    await authService.revokeToken(row.id)
+    ElMessage.success('API Key 已删除')
+    
+    // 重新加载列表
+    await loadApiKeys()
+  } catch (error: any) {
+    if (error === 'cancel') return
+    console.error('Failed to revoke API key:', error)
+    ElMessage.error(error.response?.data?.detail || '删除 API Key 失败')
+  }
+}
+
+// 编辑功能（暂时用复制代替）
+const handleCopy = (row: ApiKeyListItem) => {
+  ElMessage.info('API Key 创建后无法查看完整内容，仅在创建时显示一次')
 }
 
 const resetForm = () => {
@@ -160,16 +270,25 @@ const formatDate = (dateStr: string) => {
   return format(new Date(dateStr), 'yyyy-MM-dd HH:mm:ss')
 }
 
+const isExpired = (dateStr: string) => {
+  return new Date(dateStr) < new Date()
+}
+
 const handleLogout = () => {
   authStore.logout()
   ElMessage.success('已退出登录')
   router.push('/login')
 }
+
+// 页面加载时获取列表
+onMounted(() => {
+  loadApiKeys()
+})
 </script>
 
 <style scoped>
 .token-management-container {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 40px auto;
   padding: 0 20px;
 }
@@ -183,37 +302,5 @@ const handleLogout = () => {
 .card-header h2 {
   margin: 0;
   color: #303133;
-}
-
-.info-section {
-  margin-top: 20px;
-}
-
-.info-section h3 {
-  margin: 0 0 10px 0;
-  color: #303133;
-  font-size: 16px;
-}
-
-.info-section p {
-  margin: 8px 0;
-  line-height: 1.6;
-  color: #606266;
-}
-
-.info-section ul {
-  margin: 10px 0;
-  padding-left: 24px;
-}
-
-.info-section li {
-  margin: 6px 0;
-  line-height: 1.6;
-  color: #606266;
-}
-
-.info-section pre {
-  margin: 10px 0;
-  font-size: 13px;
 }
 </style>

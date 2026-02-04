@@ -223,6 +223,23 @@ class AuthService:
             logger.info("api_key_revoked", api_key_id=token_id, user_id=user_id)
             return True
 
+    async def get_user_api_keys(self, user_id: int) -> list[ApiKey]:
+        """获取用户的所有 API Key（包括已过期和已撤销的）。
+
+        Args:
+            user_id: 用户 ID
+
+        Returns:
+            list[ApiKey]: API Key 列表
+        """
+        with Session(self.engine) as session:
+            from sqlalchemy import desc
+
+            statement = select(ApiKey).where(ApiKey.user_id == user_id).order_by(desc(ApiKey.created_at))
+            api_keys = session.exec(statement).all()
+            logger.info("api_keys_retrieved", user_id=user_id, count=len(api_keys))
+            return list(api_keys)
+
     async def health_check(self) -> bool:
         """检查数据库连接健康状况。
 

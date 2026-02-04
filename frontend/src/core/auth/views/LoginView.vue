@@ -98,8 +98,11 @@ const handleLogin = async () => {
       await authStore.login(form.email, form.password)
       ElMessage.success('登录成功')
       router.push('/tokens')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error)
+      // 显示错误提示
+      const errorMessage = error.response?.data?.detail || error.message || '登录失败，请检查邮箱和密码'
+      ElMessage.error(errorMessage)
     } finally {
       loading.value = false
     }

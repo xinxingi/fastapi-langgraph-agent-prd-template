@@ -16,6 +16,7 @@ import type {
   TokenResponse,
   ApiKeyCreate,
   ApiKeyResponse,
+  ApiKeyListItem,
 } from '../types'
 
 export class AuthService {
@@ -62,6 +63,14 @@ export class AuthService {
    */
   async createToken(tokenData: ApiKeyCreate): Promise<ApiKeyResponse> {
     const response = await axios.post<ApiKeyResponse>('/api/v1/auth/tokens', tokenData)
+    return response.data
+  }
+
+  /**
+   * 获取 API Key 列表
+   */
+  async listTokens(): Promise<ApiKeyListItem[]> {
+    const response = await axios.get<ApiKeyListItem[]>('/api/v1/auth/tokens')
     return response.data
   }
 

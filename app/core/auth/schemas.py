@@ -28,12 +28,10 @@ class TokenResponse(BaseModel):
 
     Attributes:
         access_token: API Token 字符串
-        token_type: Token 类型（始终为 "bearer"）
         expires_at: Token 过期时间
     """
 
     access_token: str = Field(..., description="API Token 字符串")
-    token_type: str = Field(default="bearer", description="Token 类型")
     expires_at: datetime = Field(..., description="Token 过期时间")
 
 
@@ -152,6 +150,24 @@ class ApiKeyResponse(BaseModel):
     token: str = Field(..., description="原始 API Key 字符串（sk-xxx 格式，仅在创建时返回一次）")
     expires_at: datetime = Field(..., description="过期时间")
     created_at: datetime = Field(..., description="创建时间")
+
+
+class ApiKeyListItem(BaseModel):
+    """API Key 列表项模型（不包含 token 字段）。
+
+    Attributes:
+        id: API Key ID
+        name: API Key 名称
+        expires_at: 过期时间
+        created_at: 创建时间
+        revoked: 是否已撤销
+    """
+
+    id: int = Field(..., description="API Key ID")
+    name: str = Field(..., description="API Key 名称")
+    expires_at: datetime = Field(..., description="过期时间")
+    created_at: datetime = Field(..., description="创建时间")
+    revoked: bool = Field(..., description="是否已撤销")
 
 
 # 保持向后兼容的别名
