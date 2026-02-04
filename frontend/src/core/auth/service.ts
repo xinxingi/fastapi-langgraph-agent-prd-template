@@ -25,7 +25,9 @@ export class AuthService {
    * 用户注册
    */
   async register(userData: UserCreate): Promise<UserResponse> {
-    const response = await axios.post<UserResponse>('/api/v1/auth/register', userData)
+    const response = await axios.post<UserResponse>('/api/v1/auth/register', userData, {
+      skipGlobalErrorHandler: true, // 跳过全局错误处理
+    } as any)
     return response.data
   }
 
@@ -42,7 +44,8 @@ export class AuthService {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-    })
+      skipGlobalErrorHandler: true, // 跳过全局错误处理
+    } as any)
 
     // 保存 token
     if (response.data.access_token) {

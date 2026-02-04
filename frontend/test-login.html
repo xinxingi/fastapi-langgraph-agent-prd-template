@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login Error Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .error-alert {
+      background-color: #fef0f0;
+      border: 1px solid #fde2e2;
+      color: #f56c6c;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      display: none;
+    }
+    .error-alert.show {
+      display: block;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #409eff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #a0cfff;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h2>登录测试</h2>
+  
+  <div id="errorAlert" class="error-alert">
+    <span id="errorMessage"></span>
+  </div>
+
+  <form id="loginForm">
+    <input type="email" id="email" placeholder="邮箱" required>
+    <input type="password" id="password" placeholder="密码" required>
+    <button type="submit" id="loginBtn">登录</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const errorAlert = document.getElementById('errorAlert');
+    const errorMessage = document.getElementById('errorMessage');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      console.log('Form submitted');
+      
+      // 清除之前的错误
+      errorAlert.classList.remove('show');
+      errorMessage.textContent = '';
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      loginBtn.disabled = true;
+      loginBtn.textContent = '登录中...';
+      
+      try {
+        const params = new URLSearchParams();
+        params.append('username', email);
+        params.append('password', password);
+        params.append('grant_type', 'password');
+
+        const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail || '登录失败');
+        }
+
+        alert('登录成功！');
+        console.log('Login success:', data);
+        
+      } catch (error) {
+        console.error('Login failed:', error);
+        errorMessage.textContent = error.message;
+        errorAlert.classList.add('show');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = '登录';
+      }
+    });
+  </script>
+</body>
+</html>

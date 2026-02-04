@@ -42,15 +42,20 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError<{ detail: string }>) => {
-        const message = error.response?.data?.detail || error.message || '请求失败'
+        // 检查请求配置中是否标记为跳过全局错误处理
+        const skipGlobalError = (error.config as any)?.skipGlobalErrorHandler
         
-        // 401 未授权：清除 token 并跳转登录
-        if (error.response?.status === 401) {
-          this.clearToken()
-          ElMessage.error('登录已过期，请重新登录')
-          window.location.href = '/login'
-        } else {
-          ElMessage.error(message)
+        if (!skipGlobalError) {
+          const message = error.response?.data?.detail || error.message || '请求失败'
+          
+          // 401 未授权：清除 token 并跳转登录
+          if (error.response?.status === 401) {
+            this.clearToken()
+            ElMessage.error('登录已过期，请重新登录')
+            window.location.href = '/login'
+          } else {
+            ElMessage.error(message)
+          }
         }
 
         return Promise.reject(error)

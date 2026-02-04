@@ -103,23 +103,40 @@ const rules: FormRules = {
 const handleLogin = async () => {
   if (!formRef.value) return
 
+  console.log('=== Login attempt started ===')
+  
   // 清除之前的错误消息
   errorMessage.value = ''
 
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
+    if (!valid) {
+      console.log('Form validation failed')
+      return
+    }
 
+    console.log('Form validation passed, submitting...')
     loading.value = true
+    
     try {
+      console.log('Calling authStore.login...')
       await authStore.login(form.email, form.password)
+      console.log('Login successful!')
       ElMessage.success('登录成功')
       router.push('/tokens')
     } catch (error: any) {
-      console.error('Login failed:', error)
+      console.error('=== Login failed ===', error)
+      console.log('Error response:', error.response)
+      console.log('Error data:', error.response?.data)
+      
       // 显示持久错误提示（使用 Alert 而不是 Message）
-      errorMessage.value = error.response?.data?.detail || error.message || '登录失败，请检查邮箱和密码'
+      const errMsg = error.response?.data?.detail || error.message || '登录失败，请检查邮箱和密码'
+      console.log('Setting error message:', errMsg)
+      errorMessage.value = errMsg
+      
+      console.log('Error message set to:', errorMessage.value)
     } finally {
       loading.value = false
+      console.log('=== Login attempt finished ===')
     }
   })
 }
