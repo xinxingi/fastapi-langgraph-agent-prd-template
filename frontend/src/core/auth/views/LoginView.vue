@@ -7,17 +7,6 @@
         </div>
       </template>
 
-      <!-- 错误提示 -->
-      <el-alert
-        v-if="errorMessage"
-        :title="errorMessage"
-        type="error"
-        :closable="true"
-        @close="errorMessage = ''"
-        style="margin-bottom: 20px"
-        show-icon
-      />
-
       <el-form
         ref="formRef"
         :model="form"
@@ -82,7 +71,6 @@ const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
-const errorMessage = ref('')
 
 const form = reactive({
   email: '',
@@ -103,40 +91,25 @@ const rules: FormRules = {
 const handleLogin = async () => {
   if (!formRef.value) return
 
-  console.log('=== Login attempt started ===')
-  
-  // 清除之前的错误消息
-  errorMessage.value = ''
-
   await formRef.value.validate(async (valid) => {
-    if (!valid) {
-      console.log('Form validation failed')
-      return
-    }
+    if (!valid) return
 
-    console.log('Form validation passed, submitting...')
     loading.value = true
     
     try {
-      console.log('Calling authStore.login...')
       await authStore.login(form.email, form.password)
-      console.log('Login successful!')
       ElMessage.success('登录成功')
       router.push('/tokens')
     } catch (error: any) {
-      console.error('=== Login failed ===', error)
-      console.log('Error response:', error.response)
-      console.log('Error data:', error.response?.data)
-      
-      // 显示持久错误提示（使用 Alert 而不是 Message）
+      // 显示错误消息（使用 ElMessage 顶部弹窗）
       const errMsg = error.response?.data?.detail || error.message || '登录失败，请检查邮箱和密码'
-      console.log('Setting error message:', errMsg)
-      errorMessage.value = errMsg
-      
-      console.log('Error message set to:', errorMessage.value)
+      ElMessage.error({
+        message: errMsg,
+        duration: 5000,  // 5秒后自动关闭
+        showClose: true,  // 显示关闭按钮
+      })
     } finally {
       loading.value = false
-      console.log('=== Login attempt finished ===')
     }
   })
 }

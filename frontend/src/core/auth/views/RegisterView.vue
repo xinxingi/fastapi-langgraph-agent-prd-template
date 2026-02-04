@@ -7,17 +7,6 @@
         </div>
       </template>
 
-      <!-- 错误提示 -->
-      <el-alert
-        v-if="errorMessage"
-        :title="errorMessage"
-        type="error"
-        :closable="true"
-        @close="errorMessage = ''"
-        style="margin-bottom: 20px"
-        show-icon
-      />
-
       <el-form
         ref="formRef"
         :model="form"
@@ -103,7 +92,6 @@ const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
-const errorMessage = ref('')
 
 const form = reactive({
   email: '',
@@ -175,9 +163,6 @@ const rules: FormRules = {
 const handleRegister = async () => {
   if (!formRef.value) return
 
-  // 清除之前的错误消息
-  errorMessage.value = ''
-
   await formRef.value.validate(async (valid) => {
     if (!valid) return
 
@@ -190,9 +175,13 @@ const handleRegister = async () => {
       ElMessage.success('注册成功，请登录')
       router.push('/login')
     } catch (error: any) {
-      console.error('Registration failed:', error)
-      // 显示持久错误提示
-      errorMessage.value = error.response?.data?.detail || error.message || '注册失败，请稍后重试'
+      // 显示错误消息（使用 ElMessage 顶部弹窗）
+      const errMsg = error.response?.data?.detail || error.message || '注册失败，请稍后重试'
+      ElMessage.error({
+        message: errMsg,
+        duration: 5000,  // 5秒后自动关闭
+        showClose: true,  // 显示关闭按钮
+      })
     } finally {
       loading.value = false
     }
