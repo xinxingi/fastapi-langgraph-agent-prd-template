@@ -7,12 +7,23 @@
         </div>
       </template>
 
+      <!-- 错误提示 -->
+      <el-alert
+        v-if="errorMessage"
+        :title="errorMessage"
+        type="error"
+        :closable="true"
+        @close="errorMessage = ''"
+        style="margin-bottom: 20px"
+        show-icon
+      />
+
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
         label-width="80px"
-        @submit.prevent="handleLogin"
+        @submit.prevent
       >
         <el-form-item label="邮箱" prop="email">
           <el-input
@@ -20,6 +31,7 @@
             type="email"
             placeholder="请输入邮箱"
             :disabled="loading"
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
 
@@ -38,7 +50,7 @@
           <el-button
             type="primary"
             :loading="loading"
-            @click="handleLogin"
+            @click.prevent="handleLogin"
             style="width: 100%"
           >
             登录
@@ -70,6 +82,7 @@ const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+const errorMessage = ref('')
 
 const form = reactive({
   email: '',
@@ -90,6 +103,9 @@ const rules: FormRules = {
 const handleLogin = async () => {
   if (!formRef.value) return
 
+  // 清除之前的错误消息
+  errorMessage.value = ''
+
   await formRef.value.validate(async (valid) => {
     if (!valid) return
 
@@ -100,9 +116,8 @@ const handleLogin = async () => {
       router.push('/tokens')
     } catch (error: any) {
       console.error('Login failed:', error)
-      // 显示错误提示
-      const errorMessage = error.response?.data?.detail || error.message || '登录失败，请检查邮箱和密码'
-      ElMessage.error(errorMessage)
+      // 显示持久错误提示（使用 Alert 而不是 Message）
+      errorMessage.value = error.response?.data?.detail || error.message || '登录失败，请检查邮箱和密码'
     } finally {
       loading.value = false
     }
