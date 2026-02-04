@@ -216,7 +216,7 @@ async def list_api_key(skip: int = 0, limit: int = 100, current_user: BaseUser =
                 expires_at=key.expires_at,
                 created_at=key.created_at,
                 revoked=key.revoked,
-                last_used_at=key.last_used_at,
+                last_used_at=getattr(key, "last_used_at", None),
             )
             for key in api_keys
         ],
@@ -257,7 +257,7 @@ async def update_api_key(token_id: int, update_data: ApiKeyUpdate, current_user:
             expires_at=api_key.expires_at,
             created_at=api_key.created_at,
             revoked=api_key.revoked,
-            last_used_at=api_key.last_used_at,
+            last_used_at=getattr(api_key, "last_used_at", None),
         )
     except ValueError as ve:
         logger.error(

@@ -200,10 +200,15 @@ class AuthService:
                 logger.warning("api_key_user_inactive", user_id=api_key.user_id)
                 return None
 
-            # 更新最后使用时间
-            api_key.last_used_at = datetime.now(UTC)
-            session.add(api_key)
-            session.commit()
+            # 更新最后使用时间（仅当字段存在时）
+            try:
+                api_key.last_used_at = datetime.now(UTC)
+                session.add(api_key)
+                session.commit()
+            except Exception as e:
+                # 如果字段不存在，忽略错误并继续
+                logger.debug("last_used_at_update_skipped", error=str(e))
+                session.rollback()
 
             return user
 
