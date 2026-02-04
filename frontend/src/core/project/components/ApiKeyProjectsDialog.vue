@@ -23,7 +23,7 @@
               <el-option
                 v-for="key in availableApiKeys"
                 :key="key.id"
-                :label="`${key.name} (${key.id})`"
+                :label="`${key.name}`"
                 :value="key.id"
               />
             </el-select>
