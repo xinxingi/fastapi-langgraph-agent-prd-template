@@ -2,7 +2,14 @@
 
 本项目实现了双重认证机制：
 - **JWT Token** - 用于用户会话管理（短期，30天）
-- **Bearer Token (API Key)** - 用于程序调用（长期，最长可设置到 2099 年）
+- **API Key** - 用于程序调用（长期，最长可设置到 2099 年，格式为 `sk-xxx`）
+
+**重要说明**：两种 Token 都使用 **Bearer 认证方案**（RFC 6750）通过 HTTP 头传输：
+```
+Authorization: Bearer <token>
+```
+- "Bearer" 是 HTTP 认证方法，不是 Token 类型
+- JWT Token 和 API Key 都使用相同的 Bearer 头格式传输
 
 ---
 
@@ -15,8 +22,9 @@
 登录获得 **JWT Token**，用于后续 API 调用和会话管理。
 
 ### 3. 创建 API Key（可选）
-登录后，用户可以主动创建 **Bearer Token (API Key)**，用于程序/脚本调用。
+登录后，用户可以主动创建 **API Key**，用于程序/脚本调用。
 有效期可以从 1 天到 2099 年 12 月 31 日之间任意设置。
+API Key 格式为 `sk-xxx`，使用时通过 Bearer 认证方案传输。
 
 ---
 
@@ -110,9 +118,9 @@ curl -X GET "http://localhost:8000/api/v1/chatbot/sessions" \
 
 ---
 
-### 4. 创建 API Key（Bearer Token）
+### 4. 创建 API Key
 
-登录后，可以创建长期有效的 API Key，用于程序调用。
+登录后，可以创建长期有效的 API Key（格式为 `sk-xxx`），用于程序调用。
 
 **请求:**
 ```bash
@@ -200,15 +208,18 @@ curl -X DELETE "http://localhost:8000/api/v1/auth/tokens/1" \
 
 ## 两种 Token 的区别
 
-| 特性 | JWT Token | Bearer Token (API Key) |
-|------|-----------|------------------------|
+| 特性 | JWT Token | API Key |
+|------|-----------|---------|
 | **获取方式** | 登录自动获得 | 用户主动创建 |
 | **格式** | JWT 标准格式 | `sk-xxx` 格式 |
+| **传输方式** | `Authorization: Bearer <jwt>` | `Authorization: Bearer <api_key>` |
 | **有效期** | 30 天（配置） | 1 天 ~ 2099 年（创建时指定） |
 | **用途** | 用户会话管理、Web 应用 | 程序调用、脚本、第三方集成 |
 | **存储** | 客户端（LocalStorage/Cookie） | 服务器数据库 |
 | **撤销** | 到期自动失效 | 可以手动撤销 |
 | **管理** | 无需管理 | 可以创建多个、查看列表、撤销 |
+
+**说明**：Bearer 是 HTTP 认证方案（RFC 6750），不是 Token 类型。两种 Token 都通过 Bearer 头传输。
 
 ---
 
@@ -319,8 +330,13 @@ JWT_ACCESS_TOKEN_EXPIRE_DAYS=30
 
 1. **用户注册** → 只返回成功消息
 2. **用户登录** → 返回 JWT Token（30天）
-3. **日常使用** → 使用 JWT Token 访问 API
-4. **程序调用** → 创建 API Key（最长365天）
+3. **日常使用** → 使用 JWT Token 访问 API（Bearer 头传输）
+4. **程序调用** → 创建 API Key（最长到2099年，Bearer 头传输）
 5. **安全管理** → 可以随时撤销 API Key
+
+**关键概念**：
+- **Bearer** = HTTP 认证方案（RFC 6750），不是 Token 类型
+- **JWT Token** = 短期会话凭证，通过 Bearer 头传输
+- **API Key** = 长期 API 凭证（`sk-xxx` 格式），通过 Bearer 头传输
 
 这种设计既保证了用户会话的灵活性（JWT），又提供了程序调用的便利性（API Key）。

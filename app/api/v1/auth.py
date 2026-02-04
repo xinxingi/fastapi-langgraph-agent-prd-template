@@ -9,8 +9,8 @@ from app.core.auth.dependencies import get_current_user
 from app.core.auth.jwt import create_access_token
 from app.core.auth.models import BaseUser
 from app.core.auth.schemas import (
-    BearerTokenCreate,
-    BearerTokenResponse,
+    ApiKeyCreate,
+    ApiKeyResponse,
     TokenResponse,
     UserCreate,
     UserResponse,
@@ -82,9 +82,9 @@ async def login(
         HTTPException: 如果凭据无效
     """
     try:
-        # 清理输入
-        username = sanitize_string(username)
-        password = sanitize_string(password)
+        # 清理输入（密码不应该被清理，会影响特殊字符）
+        username = sanitize_email(username)  # 使用 sanitize_email 统一转小写
+        # password 不清理，直接用于验证
         grant_type = sanitize_string(grant_type)
 
         # 验证授权类型
@@ -123,47 +123,49 @@ async def login(
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.post("/tokens", response_model=BearerTokenResponse)
-async def create_bearer_token(token_data: BearerTokenCreate, current_user: BaseUser = Depends(get_current_user)):
-    """为已认证用户创建新的 API Token。
+@router.post("/tokens", response_model=ApiKeyResponse)
+async def create_api_key(token_data: ApiKeyCreate, current_user: BaseUser = Depends(get_current_user)):
+    """为已认证用户创建新的 API Key（长期 API 密钥）。
+
+    注意：返回的 API Key 使用 Bearer 认证方案传递（Authorization: Bearer sk-xxx）
 
     Args:
-        token_data: Token 创建参数
+        token_data: API Key 创建参数
         current_user: 已认证的用户
 
     Returns:
-        BearerTokenResponse: 创建的 Token 信息（包含原始 Token 字符串）
+        ApiKeyResponse: 创建的 API Key 信息（包含原始 API Key 字符串 sk-xxx）
     """
     try:
-        bearer_token, raw_token = await auth_service.create_bearer_token(
+        api_key, raw_token = await auth_service.create_bearer_token(
             current_user.id, name=token_data.name, expires_in_days=token_data.expires_in_days
         )
 
         logger.info(
-            "bearer_token_created",
+            "api_key_created",
             user_id=current_user.id,
-            token_id=bearer_token.id,
-            name=bearer_token.name,
+            api_key_id=api_key.id,
+            name=api_key.name,
         )
 
-        return BearerTokenResponse(
-            id=bearer_token.id,
-            name=bearer_token.name,
+        return ApiKeyResponse(
+            id=api_key.id,
+            name=api_key.name or "",
             token=raw_token,
-            expires_at=bearer_token.expires_at,
-            created_at=bearer_token.created_at,
+            expires_at=api_key.expires_at,
+            created_at=api_key.created_at,
         )
     except ValueError as ve:
-        logger.error("token_creation_validation_failed", error=str(ve), user_id=current_user.id, exc_info=True)
+        logger.error("api_key_creation_validation_failed", error=str(ve), user_id=current_user.id, exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
 
 
 @router.delete("/tokens/{token_id}")
-async def revoke_bearer_token(token_id: int, current_user: BaseUser = Depends(get_current_user)):
-    """撤销已认证用户的 API Token。
+async def revoke_api_key(token_id: int, current_user: BaseUser = Depends(get_current_user)):
+    """撤销已认证用户的 API Key。
 
     Args:
-        token_id: 要撤销的 Token ID
+        token_id: 要撤销的 API Key ID
         current_user: 已认证的用户
 
     Returns:
@@ -173,16 +175,16 @@ async def revoke_bearer_token(token_id: int, current_user: BaseUser = Depends(ge
         success = await auth_service.revoke_bearer_token(token_id, current_user.id)
 
         if not success:
-            raise HTTPException(status_code=404, detail="Token not found or does not belong to you")
+            raise HTTPException(status_code=404, detail="API Key not found or does not belong to you")
 
-        logger.info("bearer_token_revoked", token_id=token_id, user_id=current_user.id)
+        logger.info("api_key_revoked", api_key_id=token_id, user_id=current_user.id)
 
-        return {"message": "Token revoked successfully"}
+        return {"message": "API Key revoked successfully"}
     except ValueError as ve:
         logger.error(
-            "token_revocation_validation_failed",
+            "api_key_revocation_validation_failed",
             error=str(ve),
-            token_id=token_id,
+            api_key_id=token_id,
             user_id=current_user.id,
             exc_info=True,
         )

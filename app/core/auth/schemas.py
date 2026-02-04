@@ -96,16 +96,20 @@ class UserResponse(BaseModel):
     message: str = Field(default="User registered successfully", description="成功消息")
 
 
-class BearerTokenCreate(BaseModel):
-    """创建 API Token 的请求模型。
+class ApiKeyCreate(BaseModel):
+    """创建 API Key 的请求模型。
+
+    注意：API Key 使用 Bearer 认证方案传递（Authorization: Bearer sk-xxx）
 
     Attributes:
-        name: Token 名称（用于识别）
-        expires_in_days: Token 有效期（天数），默认 90 天，最长可设置到 2099 年
+        name: API Key 名称（用于识别）
+        expires_in_days: API Key 有效期（天数），默认 90 天，最长可设置到 2099 年
     """
 
-    name: str = Field(..., description="Token 名称", max_length=100)
-    expires_in_days: int = Field(default=90, description="Token 有效期（天数），最长可设置到 2099 年", ge=1, le=27000)
+    name: str = Field(..., description="API Key 名称", max_length=100)
+    expires_in_days: int = Field(
+        default=90, description="API Key 有效期（天数），最长可设置到 2099 年", ge=1, le=27000
+    )
 
     @field_validator("expires_in_days")
     @classmethod
@@ -132,19 +136,24 @@ class BearerTokenCreate(BaseModel):
         return v
 
 
-class BearerTokenResponse(BaseModel):
-    """创建 API Token 的响应模型。
+class ApiKeyResponse(BaseModel):
+    """创建 API Key 的响应模型。
 
     Attributes:
-        id: Token ID
-        name: Token 名称
-        token: 原始 Token 字符串（仅在创建时返回一次）
+        id: API Key ID
+        name: API Key 名称
+        token: 原始 API Key 字符串（sk-xxx 格式，仅在创建时返回一次）
         expires_at: 过期时间
         created_at: 创建时间
     """
 
-    id: int = Field(..., description="Token ID")
-    name: str = Field(..., description="Token 名称")
-    token: str = Field(..., description="原始 Token 字符串（仅在创建时返回一次）")
+    id: int = Field(..., description="API Key ID")
+    name: str = Field(..., description="API Key 名称")
+    token: str = Field(..., description="原始 API Key 字符串（sk-xxx 格式，仅在创建时返回一次）")
     expires_at: datetime = Field(..., description="过期时间")
     created_at: datetime = Field(..., description="创建时间")
+
+
+# 保持向后兼容的别名
+BearerTokenCreate = ApiKeyCreate
+BearerTokenResponse = ApiKeyResponse

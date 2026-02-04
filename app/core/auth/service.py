@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, create_engine, select
 
-from app.core.auth.models import BaseUser, BearerToken
+from app.core.auth.models import BaseUser, ApiKey
 from app.core.auth.schemas import Token
 from app.core.config import settings
 from app.core.logging import logger
@@ -126,101 +126,101 @@ class AuthService:
 
     async def create_bearer_token(
         self, user_id: int, name: Optional[str] = None, expires_in_days: int = 90
-    ) -> tuple[BearerToken, str]:
-        """为用户创建 API Bearer Token。
+    ) -> tuple[ApiKey, str]:
+        """为用户创建 API Key（长期 API 密钥）。
 
         Args:
             user_id: 用户 ID
-            name: Token 名称（可选）
-            expires_in_days: Token 有效期（天数）
+            name: API Key 名称（可选）
+            expires_in_days: API Key 有效期（天数）
 
         Returns:
-            tuple[BearerToken, str]: (Token 模型, 原始 Token 字符串)
+            tuple[ApiKey, str]: (ApiKey 模型, 原始 API Key 字符串 sk-xxx)
         """
         with Session(self.engine) as session:
-            # 生成随机 Token（类似 sk-xxx 格式）
+            # 生成随机 API Key（sk-xxx 格式）
             raw_token = f"sk-{secrets.token_urlsafe(32)}"
 
-            # 哈希 Token 后存储
-            token_hash = BearerToken.hash_token(raw_token)
+            # 哈希 API Key 后存储
+            token_hash = ApiKey.hash_token(raw_token)
 
             # 计算过期时间
             expires_at = datetime.now(UTC) + timedelta(days=expires_in_days)
 
-            # 创建 Token 记录
-            bearer_token = BearerToken(
+            # 创建 API Key 记录
+            api_key = ApiKey(
                 user_id=user_id,
-                name=name or f"Token-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
+                name=name or f"ApiKey-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
                 token_hash=token_hash,
                 expires_at=expires_at,
             )
 
-            session.add(bearer_token)
+            session.add(api_key)
             session.commit()
-            session.refresh(bearer_token)
+            session.refresh(api_key)
 
-            logger.info("bearer_token_created", user_id=user_id, token_id=bearer_token.id, name=bearer_token.name)
+            logger.info("api_key_created", user_id=user_id, api_key_id=api_key.id, name=api_key.name)
 
-            return bearer_token, raw_token
+            return api_key, raw_token
 
     async def verify_bearer_token(self, token: str) -> Optional[BaseUser]:
-        """验证 Bearer Token 并返回用户。
+        """验证 API Key 并返回用户。
 
         Args:
-            token: 原始 Token 字符串
+            token: 原始 API Key 字符串（sk-xxx 格式）
 
         Returns:
-            Optional[BaseUser]: 如果 Token 有效则返回用户，否则返回 None
+            Optional[BaseUser]: 如果 API Key 有效则返回用户，否则返回 None
         """
         with Session(self.engine) as session:
-            # 哈希 Token
-            token_hash = BearerToken.hash_token(token)
+            # 哈希 API Key
+            token_hash = ApiKey.hash_token(token)
 
-            # 查找 Token
-            statement = select(BearerToken).where(BearerToken.token_hash == token_hash)
-            bearer_token = session.exec(statement).first()
+            # 查找 API Key
+            statement = select(ApiKey).where(ApiKey.token_hash == token_hash)
+            api_key = session.exec(statement).first()
 
-            if not bearer_token:
-                logger.warning("bearer_token_not_found", token_prefix=token[:10])
+            if not api_key:
+                logger.warning("api_key_not_found", token_prefix=token[:10])
                 return None
 
-            # 检查 Token 是否有效
-            if not bearer_token.is_valid():
+            # 检查 API Key 是否有效
+            if not api_key.is_valid():
                 logger.warning(
-                    "bearer_token_invalid",
-                    token_id=bearer_token.id,
-                    revoked=bearer_token.revoked,
-                    expired=bearer_token.is_expired(),
+                    "api_key_invalid",
+                    api_key_id=api_key.id,
+                    revoked=api_key.revoked,
+                    expired=api_key.is_expired(),
                 )
                 return None
 
             # 获取用户
-            user = session.get(BaseUser, bearer_token.user_id)
+            user = session.get(BaseUser, api_key.user_id)
             if not user or not user.is_active:
-                logger.warning("bearer_token_user_inactive", user_id=bearer_token.user_id)
+                logger.warning("api_key_user_inactive", user_id=api_key.user_id)
                 return None
 
             return user
 
     async def revoke_bearer_token(self, token_id: int, user_id: int) -> bool:
-        """撤销用户的 Bearer Token。
+        """撤销用户的 API Key。
 
         Args:
-            token_id: Token ID
+            token_id: API Key ID
             user_id: 用户 ID（用于权限验证）
 
         Returns:
             bool: 撤销是否成功
         """
         with Session(self.engine) as session:
-            bearer_token = session.get(BearerToken, token_id)
-            if not bearer_token or bearer_token.user_id != user_id:
+            api_key = session.get(ApiKey, token_id)
+            if not api_key or api_key.user_id != user_id:
                 return False
 
-            bearer_token.revoked = True
-            session.add(bearer_token)
+            api_key.revoked = True
+            session.add(api_key)
             session.commit()
-            logger.info("bearer_token_revoked", token_id=token_id, user_id=user_id)
+            logger.info("api_key_revoked", api_key_id=token_id, user_id=user_id)
             return True
 
     async def health_check(self) -> bool:
