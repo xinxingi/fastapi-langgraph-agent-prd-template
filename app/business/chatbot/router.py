@@ -67,7 +67,7 @@ async def create_session(session_data: ChatSessionCreate, current_user: BaseUser
             last_activity_at=session.last_activity_at,
         )
     except ValueError as ve:
-        logger.error("session_creation_validation_failed", error=str(ve), user_id=current_user.id, exc_info=True)
+        logger.warning("session_creation_validation_failed", error=str(ve), user_id=current_user.id)
         raise HTTPException(status_code=422, detail=str(ve))
 
 
@@ -96,7 +96,7 @@ async def get_user_sessions(current_user: BaseUser = Depends(get_current_user)):
             for session in sessions
         ]
     except ValueError as ve:
-        logger.error("get_sessions_validation_failed", user_id=current_user.id, error=str(ve), exc_info=True)
+        logger.warning("get_sessions_validation_failed", user_id=current_user.id, error=str(ve))
         raise HTTPException(status_code=422, detail=str(ve))
 
 
@@ -155,7 +155,7 @@ async def update_session(
             last_activity_at=updated_session.last_activity_at,
         )
     except ValueError as ve:
-        logger.error("session_update_validation_failed", error=str(ve), session_id=session_id, exc_info=True)
+        logger.warning("session_update_validation_failed", error=str(ve), session_id=session_id)
         raise HTTPException(status_code=422, detail=str(ve))
 
 
@@ -181,7 +181,7 @@ async def delete_session(session_id: str, session: ChatSession = Depends(get_cur
 
         return {"message": "Session deleted successfully"}
     except ValueError as ve:
-        logger.error("session_deletion_validation_failed", error=str(ve), session_id=session_id, exc_info=True)
+        logger.warning("session_deletion_validation_failed", error=str(ve), session_id=session_id)
         raise HTTPException(status_code=422, detail=str(ve))
 
 

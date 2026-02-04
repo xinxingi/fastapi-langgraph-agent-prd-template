@@ -58,7 +58,7 @@ async def register_user(request: Request, user_data: UserCreate):
 
         return UserResponse(id=user.id, email=user.email)
     except ValueError as ve:
-        logger.error("user_registration_validation_failed", error=str(ve), exc_info=True)
+        logger.warning("user_registration_validation_failed", error=str(ve))
         raise HTTPException(status_code=422, detail=str(ve))
 
 
@@ -122,7 +122,7 @@ async def login(
 
         return TokenResponse(access_token=access_token, expires_at=expires_at)
     except ValueError as ve:
-        logger.error("login_validation_failed", error=str(ve), exc_info=True)
+        logger.warning("login_validation_failed", error=str(ve))
         raise HTTPException(status_code=422, detail=str(ve))
 
 
@@ -159,7 +159,7 @@ async def create_api_key(token_data: ApiKeyCreate, current_user: BaseUser = Depe
             created_at=api_key.created_at,
         )
     except ValueError as ve:
-        logger.error("api_key_creation_validation_failed", error=str(ve), user_id=current_user.id, exc_info=True)
+        logger.warning("api_key_creation_validation_failed", error=str(ve), user_id=current_user.id)
         raise HTTPException(status_code=422, detail=str(ve))
 
 
@@ -184,12 +184,11 @@ async def revoke_api_key(token_id: int, current_user: BaseUser = Depends(get_cur
 
         return {"message": "API Key revoked successfully"}
     except ValueError as ve:
-        logger.error(
+        logger.warning(
             "api_key_revocation_validation_failed",
             error=str(ve),
             api_key_id=token_id,
             user_id=current_user.id,
-            exc_info=True,
         )
         raise HTTPException(status_code=422, detail=str(ve))
 
@@ -260,11 +259,10 @@ async def update_api_key(token_id: int, update_data: ApiKeyUpdate, current_user:
             last_used_at=getattr(api_key, "last_used_at", None),
         )
     except ValueError as ve:
-        logger.error(
+        logger.warning(
             "api_key_update_validation_failed",
             error=str(ve),
             api_key_id=token_id,
             user_id=current_user.id,
-            exc_info=True,
         )
         raise HTTPException(status_code=422, detail=str(ve))

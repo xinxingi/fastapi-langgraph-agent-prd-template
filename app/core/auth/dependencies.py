@@ -72,7 +72,7 @@ async def get_current_user(
 
         return user
     except ValueError as ve:
-        logger.error("token_validation_failed", error=str(ve), exc_info=True)
+        logger.warning("token_validation_failed", error=str(ve))
         raise HTTPException(
             status_code=422,
             detail="无效的 token 格式",

@@ -60,7 +60,7 @@ async def get_current_chat_session(
 
         return session
     except ValueError as ve:
-        logger.error("session_id_validation_failed", error=str(ve), exc_info=True)
+        logger.warning("session_id_validation_failed", error=str(ve))
         raise HTTPException(
             status_code=422,
             detail="Invalid session ID format",
