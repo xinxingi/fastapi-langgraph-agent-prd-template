@@ -46,7 +46,7 @@
           </el-button>
         </el-form-item>
 
-        <el-form-item>
+        <el-form-item v-if="enableRegistration">
           <el-button
             text
             @click="goToRegister"
@@ -65,12 +65,14 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/auth'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { config } from '@/core/config'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+const enableRegistration = config.enableRegistration
 
 const form = reactive({
   email: '',
