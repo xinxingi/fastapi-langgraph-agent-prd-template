@@ -327,8 +327,8 @@ const loadApiKeys = async () => {
     apiKeys.value = response.items
     total.value = response.total
   } catch (error: any) {
+    // 错误已由全局错误处理器显示，这里不需要再次显示
     console.error('Failed to load API keys:', error)
-    ElMessage.error(error.response?.data?.detail || '加载 API Key 列表失败')
   } finally {
     loading.value = false
   }
@@ -385,8 +385,8 @@ const handleCreateToken = async () => {
       currentPage.value = 1
       await loadApiKeys()
     } catch (error: any) {
+      // 错误已由全局错误处理器显示，这里不需要再次显示
       console.error('Failed to create API key:', error)
-      ElMessage.error(error.response?.data?.detail || '创建 API Key 失败')
     } finally {
       submitLoading.value = false
     }
@@ -412,8 +412,8 @@ const handleUpdateToken = async () => {
       // 重新加载列表
       await loadApiKeys()
     } catch (error: any) {
+      // 错误已由全局错误处理器显示，这里不需要再次显示
       console.error('Failed to update API key:', error)
-      ElMessage.error(error.response?.data?.detail || '更新 API Key 失败')
     } finally {
       submitLoading.value = false
     }
@@ -440,8 +440,8 @@ const handleRevoke = async (row: ApiKeyListItem) => {
     await loadApiKeys()
   } catch (error: any) {
     if (error === 'cancel') return
+    // 错误已由全局错误处理器显示，这里不需要再次显示
     console.error('Failed to revoke API key:', error)
-    ElMessage.error(error.response?.data?.detail || '删除 API Key 失败')
   }
 }
 
