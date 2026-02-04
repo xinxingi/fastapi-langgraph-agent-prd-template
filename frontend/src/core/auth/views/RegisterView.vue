@@ -7,12 +7,23 @@
         </div>
       </template>
 
+      <!-- 错误提示 -->
+      <el-alert
+        v-if="errorMessage"
+        :title="errorMessage"
+        type="error"
+        :closable="true"
+        @close="errorMessage = ''"
+        style="margin-bottom: 20px"
+        show-icon
+      />
+
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
         label-width="100px"
-        @submit.prevent="handleRegister"
+        @submit.prevent
       >
         <el-form-item label="邮箱" prop="email">
           <el-input
@@ -20,6 +31,7 @@
             type="email"
             placeholder="请输入邮箱"
             :disabled="loading"
+            @keyup.enter="handleRegister"
           />
         </el-form-item>
 
@@ -30,6 +42,7 @@
             placeholder="请输入密码"
             :disabled="loading"
             show-password
+            @keyup.enter="handleRegister"
           />
           <div class="password-tips">
             <p>密码要求：</p>
@@ -58,7 +71,7 @@
           <el-button
             type="primary"
             :loading="loading"
-            @click="handleRegister"
+            @click.prevent="handleRegister"
             style="width: 100%"
           >
             注册
@@ -90,6 +103,7 @@ const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+const errorMessage = ref('')
 
 const form = reactive({
   email: '',
@@ -161,6 +175,9 @@ const rules: FormRules = {
 const handleRegister = async () => {
   if (!formRef.value) return
 
+  // 清除之前的错误消息
+  errorMessage.value = ''
+
   await formRef.value.validate(async (valid) => {
     if (!valid) return
 
@@ -172,8 +189,10 @@ const handleRegister = async () => {
       })
       ElMessage.success('注册成功，请登录')
       router.push('/login')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error)
+      // 显示持久错误提示
+      errorMessage.value = error.response?.data?.detail || error.message || '注册失败，请稍后重试'
     } finally {
       loading.value = false
     }
