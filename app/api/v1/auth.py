@@ -207,8 +207,11 @@ async def list_api_key(skip: int = 0, limit: int = 100, current_user: BaseUser =
     """
     api_keys, total = await auth_service.get_user_api_keys(current_user.id, skip=skip, limit=limit)
 
-    return ApiKeyListResponse(
-        items=[
+    # 获取每个 API Key 绑定的项目数量
+    items = []
+    for key in api_keys:
+        bound_count = await auth_service.get_api_key_bound_projects_count(key.id)
+        items.append(
             ApiKeyListItem(
                 id=key.id,
                 name=key.name or "",
@@ -216,9 +219,12 @@ async def list_api_key(skip: int = 0, limit: int = 100, current_user: BaseUser =
                 created_at=key.created_at,
                 revoked=key.revoked,
                 last_used_at=getattr(key, "last_used_at", None),
+                bound_projects_count=bound_count,
             )
-            for key in api_keys
-        ],
+        )
+
+    return ApiKeyListResponse(
+        items=items,
         total=total,
         skip=skip,
         limit=limit,

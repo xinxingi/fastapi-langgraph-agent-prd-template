@@ -82,6 +82,35 @@ export class AuthService {
   }
 
   /**
+   * 获取 API Key 列表（别名方法，与 listTokens 相同）
+   */
+  async listApiKeys(params: { skip?: number; limit?: number } = {}): Promise<ApiKeyListResponse> {
+    const { skip = 0, limit = 100 } = params
+    return this.listTokens(skip, limit)
+  }
+
+  /**
+   * 创建 API Key（别名方法）
+   */
+  async createApiKey(tokenData: ApiKeyCreate): Promise<ApiKeyResponse> {
+    return this.createToken(tokenData)
+  }
+
+  /**
+   * 撤销 API Key（别名方法）
+   */
+  async revokeApiKey(tokenId: number): Promise<{ message: string }> {
+    return this.revokeToken(tokenId)
+  }
+
+  /**
+   * 删除 API Key（别名方法）
+   */
+  async deleteApiKey(tokenId: number): Promise<{ message: string }> {
+    return this.revokeToken(tokenId)
+  }
+
+  /**
    * 更新 API Key
    */
   async updateToken(tokenId: number, updateData: ApiKeyUpdate): Promise<ApiKeyListItem> {

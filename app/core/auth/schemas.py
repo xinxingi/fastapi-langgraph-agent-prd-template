@@ -196,6 +196,7 @@ class ApiKeyListItem(BaseModel):
         created_at: 创建时间
         revoked: 是否已撤销
         last_used_at: 最后使用时间（如果从未使用过则为 None）
+        bound_projects_count: 绑定的项目数量
     """
 
     id: int = Field(..., description="API Key ID")
@@ -204,6 +205,7 @@ class ApiKeyListItem(BaseModel):
     created_at: datetime = Field(..., description="创建时间")
     revoked: bool = Field(..., description="是否已撤销")
     last_used_at: datetime | None = Field(default=None, description="最后使用时间（如果从未使用过则为 None）")
+    bound_projects_count: int = Field(default=0, description="绑定的项目数量")
 
 
 class ApiKeyListResponse(BaseModel):
@@ -225,3 +227,129 @@ class ApiKeyListResponse(BaseModel):
 # 保持向后兼容的别名
 BearerTokenCreate = ApiKeyCreate
 BearerTokenResponse = ApiKeyResponse
+
+
+class ProjectCreate(BaseModel):
+    """创建项目的请求模型。
+
+    Attributes:
+        name: 项目名称（唯一）
+        description: 项目描述
+    """
+
+    name: str = Field(..., description="项目名称", max_length=100)
+    description: str | None = Field(default=None, description="项目描述", max_length=500)
+
+
+class ProjectUpdate(BaseModel):
+    """更新项目的请求模型。
+
+    Attributes:
+        name: 项目名称（唯一）
+        description: 项目描述
+        is_active: 项目是否激活
+    """
+
+    name: str | None = Field(default=None, description="项目名称", max_length=100)
+    description: str | None = Field(default=None, description="项目描述", max_length=500)
+    is_active: bool | None = Field(default=None, description="项目是否激活")
+
+
+class ProjectResponse(BaseModel):
+    """项目响应模型。
+
+    Attributes:
+        id: 项目ID
+        name: 项目名称
+        description: 项目描述
+        is_active: 项目是否激活
+        created_at: 创建时间
+        updated_at: 更新时间
+    """
+
+    id: int = Field(..., description="项目ID")
+    name: str = Field(..., description="项目名称")
+    description: str | None = Field(default=None, description="项目描述")
+    is_active: bool = Field(..., description="项目是否激活")
+    created_at: datetime = Field(..., description="创建时间")
+    updated_at: datetime = Field(..., description="更新时间")
+
+
+class ProjectListResponse(BaseModel):
+    """项目列表的分页响应模型。
+
+    Attributes:
+        items: 项目列表
+        total: 总记录数
+        skip: 跳过的记录数
+        limit: 返回的最大记录数
+    """
+
+    items: list[ProjectResponse] = Field(..., description="项目列表")
+    total: int = Field(..., description="总记录数")
+    skip: int = Field(..., description="跳过的记录数")
+    limit: int = Field(..., description="返回的最大记录数")
+
+
+class AssignProjectToUser(BaseModel):
+    """为用户分配项目的请求模型。
+
+    Attributes:
+        user_id: 用户ID
+        project_id: 项目ID
+        role: 用户在项目中的角色
+    """
+
+    user_id: int = Field(..., description="用户ID")
+    project_id: int = Field(..., description="项目ID")
+    role: str = Field(default="member", description="用户在项目中的角色", max_length=50)
+
+
+class AssignProjectToApiKey(BaseModel):
+    """为 API Key 分配项目的请求模型。
+
+    Attributes:
+        api_key_id: API Key ID
+        project_id: 项目ID
+    """
+
+    api_key_id: int = Field(..., description="API Key ID")
+    project_id: int = Field(..., description="项目ID")
+
+
+class UserProjectResponse(BaseModel):
+    """用户-项目关联响应模型。
+
+    Attributes:
+        id: 关联ID
+        user_id: 用户ID
+        project_id: 项目ID
+        role: 用户在项目中的角色
+        created_at: 创建时间
+        project: 项目信息
+    """
+
+    id: int = Field(..., description="关联ID")
+    user_id: int = Field(..., description="用户ID")
+    project_id: int = Field(..., description="项目ID")
+    role: str = Field(..., description="用户在项目中的角色")
+    created_at: datetime = Field(..., description="创建时间")
+    project: ProjectResponse | None = Field(default=None, description="项目信息")
+
+
+class ApiKeyProjectResponse(BaseModel):
+    """API Key-项目关联响应模型。
+
+    Attributes:
+        id: 关联ID
+        api_key_id: API Key ID
+        project_id: 项目ID
+        created_at: 创建时间
+        project: 项目信息
+    """
+
+    id: int = Field(..., description="关联ID")
+    api_key_id: int = Field(..., description="API Key ID")
+    project_id: int = Field(..., description="项目ID")
+    created_at: datetime = Field(..., description="创建时间")
+    project: ProjectResponse | None = Field(default=None, description="项目信息")

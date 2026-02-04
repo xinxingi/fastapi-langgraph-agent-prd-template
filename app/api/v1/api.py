@@ -10,14 +10,16 @@
 from fastapi import APIRouter
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.projects import router as projects_router
 from app.core.business_registry import auto_register_business_modules
 from app.core.logging import logger
 
 api_router = APIRouter()
 
 # 包含框架核心路由器（手动注册）
-# 只有 auth 保留在这里，因为身份验证是框架级别的基础设施
+# 只有 auth 和 projects 保留在这里，因为它们是框架级别的基础设施
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_router.include_router(projects_router, prefix="/projects", tags=["projects"])
 
 # 自动注册所有业务模块
 # 所有业务逻辑模块（chatbot, hr_verification 等）都通过自动发现注册

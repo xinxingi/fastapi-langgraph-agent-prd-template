@@ -47,6 +47,7 @@ class BaseUser(BaseModel, table=True):
 
     # 关系
     api_keys: List["ApiKey"] = Relationship(back_populates="user", cascade_delete=True)
+    user_projects: List["UserProject"] = Relationship(back_populates="user", cascade_delete=True)
 
     def verify_password(self, password: str) -> bool:
         """验证提供的密码是否与哈希值匹配。
@@ -111,6 +112,7 @@ class ApiKey(BaseModel, table=True):
 
     # 关系
     user: BaseUser = Relationship(back_populates="api_keys")
+    api_key_projects: List["ApiKeyProject"] = Relationship(back_populates="api_key", cascade_delete=True)
 
     @staticmethod
     def hash_token(token: str) -> str:
@@ -145,3 +147,89 @@ class ApiKey(BaseModel, table=True):
 
 # 保持向后兼容的别名
 BearerToken = ApiKey
+
+
+class Project(BaseModel, table=True):
+    """项目模型。
+
+    对应数据库表: bs_projects
+    每个项目可以分配给多个用户，每个 API Key 可以访问多个项目。
+
+    Attributes:
+        id: 项目主键
+        name: 项目名称（唯一）
+        description: 项目描述
+        is_active: 项目是否激活
+        created_at: 创建时间（继承自 BaseModel）
+        updated_at: 更新时间
+        user_projects: 用户-项目关联（关系字段）
+        api_key_projects: API Key-项目关联（关系字段）
+    """
+
+    __tablename__ = "bs_projects"
+
+    id: int = Field(default=None, primary_key=True, sa_column_kwargs={"comment": "项目ID"})
+    name: str = Field(unique=True, index=True, max_length=100, sa_column_kwargs={"comment": "项目名称（唯一）"})
+    description: Optional[str] = Field(default=None, max_length=500, sa_column_kwargs={"comment": "项目描述"})
+    is_active: bool = Field(default=True, sa_column_kwargs={"comment": "项目是否激活"})
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), sa_column_kwargs={"comment": "更新时间"})
+
+    # 关系
+    user_projects: List["UserProject"] = Relationship(back_populates="project", cascade_delete=True)
+    api_key_projects: List["ApiKeyProject"] = Relationship(back_populates="project", cascade_delete=True)
+
+
+class UserProject(BaseModel, table=True):
+    """用户-项目关联表。
+
+    对应数据库表: bs_user_projects
+    多对多关系：一个用户可以拥有多个项目，一个项目可以分配给多个用户。
+
+    Attributes:
+        id: 关联主键
+        user_id: 用户ID（外键）
+        project_id: 项目ID（外键）
+        role: 用户在项目中的角色（如 owner、admin、member）
+        created_at: 创建时间（继承自 BaseModel）
+        user: 所属用户（关系字段）
+        project: 所属项目（关系字段）
+    """
+
+    __tablename__ = "bs_user_projects"
+    __table_args__ = (UniqueConstraint("user_id", "project_id", name="uq_user_project"),)
+
+    id: int = Field(default=None, primary_key=True, sa_column_kwargs={"comment": "关联ID"})
+    user_id: int = Field(foreign_key="bs_users.id", sa_column_kwargs={"comment": "用户ID"})
+    project_id: int = Field(foreign_key="bs_projects.id", sa_column_kwargs={"comment": "项目ID"})
+    role: str = Field(default="member", max_length=50, sa_column_kwargs={"comment": "用户在项目中的角色"})
+
+    # 关系
+    user: BaseUser = Relationship(back_populates="user_projects")
+    project: Project = Relationship(back_populates="user_projects")
+
+
+class ApiKeyProject(BaseModel, table=True):
+    """API Key-项目关联表。
+
+    对应数据库表: bs_api_key_projects
+    多对多关系：一个 API Key 可以访问多个项目，一个项目可以被多个 API Key 访问。
+
+    Attributes:
+        id: 关联主键
+        api_key_id: API Key ID（外键）
+        project_id: 项目ID（外键）
+        created_at: 创建时间（继承自 BaseModel）
+        api_key: 所属 API Key（关系字段）
+        project: 所属项目（关系字段）
+    """
+
+    __tablename__ = "bs_api_key_projects"
+    __table_args__ = (UniqueConstraint("api_key_id", "project_id", name="uq_api_key_project"),)
+
+    id: int = Field(default=None, primary_key=True, sa_column_kwargs={"comment": "关联ID"})
+    api_key_id: int = Field(foreign_key="bs_api_keys.id", sa_column_kwargs={"comment": "API Key ID"})
+    project_id: int = Field(foreign_key="bs_projects.id", sa_column_kwargs={"comment": "项目ID"})
+
+    # 关系
+    api_key: ApiKey = Relationship(back_populates="api_key_projects")
+    project: Project = Relationship(back_populates="api_key_projects")

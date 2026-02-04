@@ -1,12 +1,12 @@
 <template>
-  <div class="token-management-container">
+  <main-layout>
+    <div class="token-management-container">
     <el-card>
       <template #header>
         <div class="card-header">
           <h2>API Key 管理</h2>
           <div>
             <el-button type="primary" @click="openCreateDialog">创建 API Key</el-button>
-            <el-button type="danger" @click="handleLogout">退出登录</el-button>
           </div>
         </div>
       </template>
@@ -240,19 +240,19 @@
       </template>
     </el-dialog>
   </div>
+  </main-layout>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/auth'
 import { authService } from '../service'
 import type { ApiKeyResponse, ApiKeyListItem } from '@/core/types'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { format } from 'date-fns'
 import { Search } from '@element-plus/icons-vue'
+import MainLayout from '@/layouts/MainLayout.vue'
 
-const router = useRouter()
 const authStore = useAuthStore()
 
 const createFormRef = ref<FormInstance>()
@@ -492,12 +492,6 @@ const getTimeRemaining = (expiresAt: string): string => {
     const minutes = Math.floor(diffMs / (1000 * 60))
     return `${minutes} 分钟`
   }
-}
-
-const handleLogout = () => {
-  authStore.logout()
-  ElMessage.success('已退出登录')
-  router.push('/login')
 }
 
 // 页面加载时获取列表
