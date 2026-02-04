@@ -22,6 +22,11 @@
 - 日志消息必须使用 **lowercase_with_underscores** 格式（例如，`"user_login_successful"`）
 - **在 structlog 事件中不使用 f-字符串** - 将变量作为 kwargs 传递
 - 使用 `logger.exception()` 而不是 `logger.error()` 来保留回溯信息
+- **日志级别约定**:
+  - `logger.error(..., exc_info=True)` 或 `logger.exception()` - 仅用于**意外的系统错误**（数据库故障、网络错误等）
+  - `logger.warning(...)` - 用于**预期的业务验证错误**（无 `exc_info=True`，如重复名称、无效输入等）
+  - `logger.info(...)` - 用于正常的业务事件（用户登录、创建资源等）
+  - `logger.debug(...)` - 用于详细调试信息
 - 示例：`logger.info("chat_request_received", session_id=session.id, message_count=len(messages))`
 
 ### 重试规则
