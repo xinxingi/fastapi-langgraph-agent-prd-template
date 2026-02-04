@@ -131,13 +131,22 @@ class AuthService:
 
         Args:
             user_id: 用户 ID
-            name: API Key 名称（可选）
+            name: API Key 名称（可选，同一用户下必须唯一）
             expires_in_days: API Key 有效期（天数）
 
         Returns:
             tuple[ApiKey, str]: (ApiKey 模型, 原始 API Key 字符串 sk-xxx)
+
+        Raises:
+            ValueError: 如果名称已存在
         """
         with Session(self.engine) as session:
+            # 如果提供了名称，检查是否已存在
+            if name:
+                existing = session.exec(select(ApiKey).where(ApiKey.user_id == user_id, ApiKey.name == name)).first()
+                if existing:
+                    raise ValueError(f"API Key 名称 '{name}' 已存在，请使用其他名称")
+
             # 生成随机 API Key（sk-xxx 格式）
             raw_token = f"sk-{secrets.token_urlsafe(32)}"
 

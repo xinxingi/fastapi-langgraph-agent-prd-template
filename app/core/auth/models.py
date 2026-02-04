@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, UTC
 from typing import Optional, List, TYPE_CHECKING
 
 import bcrypt
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Relationship, UniqueConstraint
 
 from app.core.models.base import BaseModel
 
@@ -85,7 +85,7 @@ class ApiKey(BaseModel, table=True):
     Attributes:
         id: API Key 主键
         user_id: 所属用户ID（外键）
-        name: API Key 名称（用于识别不同的密钥）
+        name: API Key 名称（用于识别不同的密钥，同一用户下唯一）
         token_hash: API Key 的 SHA256 哈希值（唯一）
         expires_at: 过期时间
         revoked: 是否已撤销
@@ -95,10 +95,13 @@ class ApiKey(BaseModel, table=True):
     """
 
     __tablename__ = "bs_api_keys"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_user_api_key_name"),)
 
     id: int = Field(default=None, primary_key=True, sa_column_kwargs={"comment": "API Key ID"})
     user_id: int = Field(foreign_key="bs_users.id", sa_column_kwargs={"comment": "所属用户ID"})
-    name: Optional[str] = Field(default=None, max_length=100, sa_column_kwargs={"comment": "API Key名称"})
+    name: Optional[str] = Field(
+        default=None, max_length=100, sa_column_kwargs={"comment": "API Key名称（同一用户下唯一）"}
+    )
     token_hash: str = Field(
         unique=True, index=True, max_length=255, sa_column_kwargs={"comment": "API Key的SHA256哈希值"}
     )
