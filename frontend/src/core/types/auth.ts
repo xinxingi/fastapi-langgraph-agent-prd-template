@@ -36,6 +36,10 @@ export interface ApiKeyCreate {
   expires_in_days?: number
 }
 
+export interface ApiKeyUpdate {
+  expires_in_days: number
+}
+
 export interface ApiKeyResponse {
   id: number
   name: string

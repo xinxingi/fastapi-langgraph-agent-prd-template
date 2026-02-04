@@ -5,7 +5,7 @@
         <div class="card-header">
           <h2>API Key 管理</h2>
           <div>
-            <el-button type="primary" @click="dialogVisible = true">创建 API Key</el-button>
+            <el-button type="primary" @click="openCreateDialog">创建 API Key</el-button>
             <el-button type="danger" @click="handleLogout">退出登录</el-button>
           </div>
         </div>
@@ -22,7 +22,7 @@
       >
         <template #default>
           <p style="margin: 8px 0">
-            <strong>请妥善保存以下 API Key，关闭后将无法再次查看：</strong>
+            <strong>请妥善保存以下 API Key：</strong>
           </p>
           <el-input
             :model-value="createdToken.token"
@@ -76,7 +76,7 @@
               type="primary"
               size="small"
               link
-              @click="handleCopy(row)"
+              @click="openEditDialog(row)"
             >
               编辑
             </el-button>
@@ -97,20 +97,20 @@
 
     <!-- 创建 API Key 对话框 -->
     <el-dialog
-      v-model="dialogVisible"
+      v-model="createDialogVisible"
       title="创建 API Key"
       width="500px"
       :close-on-click-modal="false"
     >
       <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
+        ref="createFormRef"
+        :model="createForm"
+        :rules="createRules"
         label-width="140px"
       >
         <el-form-item label="API Key 名称" prop="name">
           <el-input
-            v-model="form.name"
+            v-model="createForm.name"
             placeholder="例如：开发环境 API Key"
             :disabled="submitLoading"
           />
@@ -118,7 +118,7 @@
 
         <el-form-item label="有效期（天）" prop="expires_in_days">
           <el-input-number
-            v-model="form.expires_in_days"
+            v-model="createForm.expires_in_days"
             :min="1"
             :max="27000"
             :disabled="submitLoading"
@@ -131,13 +131,60 @@
       </el-form>
 
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button @click="createDialogVisible = false">取消</el-button>
         <el-button
           type="primary"
           :loading="submitLoading"
           @click="handleCreateToken"
         >
           创建
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑 API Key 对话框 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="编辑 API Key"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editRules"
+        label-width="140px"
+      >
+        <el-form-item label="API Key 名称">
+          <el-input :model-value="editingKey?.name" disabled />
+        </el-form-item>
+
+        <el-form-item label="当前过期时间">
+          <el-input :model-value="editingKey ? formatDate(editingKey.expires_at) : ''" disabled />
+        </el-form-item>
+
+        <el-form-item label="新的有效期（天）" prop="expires_in_days">
+          <el-input-number
+            v-model="editForm.expires_in_days"
+            :min="1"
+            :max="27000"
+            :disabled="submitLoading"
+            style="width: 100%"
+          />
+          <div style="margin-top: 8px; color: #909399; font-size: 12px">
+            从现在起计算，最长可设置到 2099 年
+          </div>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleUpdateToken"
+        >
+          保存
         </el-button>
       </template>
     </el-dialog>
@@ -156,23 +203,36 @@ import { format } from 'date-fns'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const formRef = ref<FormInstance>()
+const createFormRef = ref<FormInstance>()
+const editFormRef = ref<FormInstance>()
 const loading = ref(false)
 const submitLoading = ref(false)
-const dialogVisible = ref(false)
+const createDialogVisible = ref(false)
+const editDialogVisible = ref(false)
 const createdToken = ref<ApiKeyResponse | null>(null)
 const apiKeys = ref<ApiKeyListItem[]>([])
+const editingKey = ref<ApiKeyListItem | null>(null)
 
-const form = reactive({
+const createForm = reactive({
   name: '',
   expires_in_days: 90,
 })
 
-const rules: FormRules = {
+const editForm = reactive({
+  expires_in_days: 90,
+})
+
+const createRules: FormRules = {
   name: [
     { required: true, message: '请输入 API Key 名称', trigger: 'blur' },
     { max: 100, message: 'API Key 名称最多 100 个字符', trigger: 'blur' },
   ],
+  expires_in_days: [
+    { required: true, message: '请输入有效期', trigger: 'blur' },
+  ],
+}
+
+const editRules: FormRules = {
   expires_in_days: [
     { required: true, message: '请输入有效期', trigger: 'blur' },
   ],
@@ -191,23 +251,38 @@ const loadApiKeys = async () => {
   }
 }
 
+// 打开创建对话框
+const openCreateDialog = () => {
+  createForm.name = ''
+  createForm.expires_in_days = 90
+  createFormRef.value?.clearValidate()
+  createDialogVisible.value = true
+}
+
+// 打开编辑对话框
+const openEditDialog = (row: ApiKeyListItem) => {
+  editingKey.value = row
+  editForm.expires_in_days = 90
+  editFormRef.value?.clearValidate()
+  editDialogVisible.value = true
+}
+
 // 创建 API Key
 const handleCreateToken = async () => {
-  if (!formRef.value) return
+  if (!createFormRef.value) return
 
-  await formRef.value.validate(async (valid) => {
+  await createFormRef.value.validate(async (valid) => {
     if (!valid) return
 
     submitLoading.value = true
     try {
       const result = await authService.createToken({
-        name: form.name,
-        expires_in_days: form.expires_in_days,
+        name: createForm.name,
+        expires_in_days: createForm.expires_in_days,
       })
 
       createdToken.value = result
-      dialogVisible.value = false
-      resetForm()
+      createDialogVisible.value = false
       ElMessage.success('API Key 创建成功')
       
       // 重新加载列表
@@ -215,6 +290,33 @@ const handleCreateToken = async () => {
     } catch (error: any) {
       console.error('Failed to create API key:', error)
       ElMessage.error(error.response?.data?.detail || '创建 API Key 失败')
+    } finally {
+      submitLoading.value = false
+    }
+  })
+}
+
+// 更新 API Key
+const handleUpdateToken = async () => {
+  if (!editFormRef.value || !editingKey.value) return
+
+  await editFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    submitLoading.value = true
+    try {
+      await authService.updateToken(editingKey.value!.id, {
+        expires_in_days: editForm.expires_in_days,
+      })
+
+      editDialogVisible.value = false
+      ElMessage.success('API Key 更新成功')
+      
+      // 重新加载列表
+      await loadApiKeys()
+    } catch (error: any) {
+      console.error('Failed to update API key:', error)
+      ElMessage.error(error.response?.data?.detail || '更新 API Key 失败')
     } finally {
       submitLoading.value = false
     }
@@ -244,17 +346,6 @@ const handleRevoke = async (row: ApiKeyListItem) => {
     console.error('Failed to revoke API key:', error)
     ElMessage.error(error.response?.data?.detail || '删除 API Key 失败')
   }
-}
-
-// 编辑功能（暂时用复制代替）
-const handleCopy = (row: ApiKeyListItem) => {
-  ElMessage.info('API Key 创建后无法查看完整内容，仅在创建时显示一次')
-}
-
-const resetForm = () => {
-  form.name = ''
-  form.expires_in_days = 90
-  formRef.value?.clearValidate()
 }
 
 const copyToken = async (token: string) => {

@@ -12,6 +12,7 @@ from app.core.auth.schemas import (
     ApiKeyCreate,
     ApiKeyListItem,
     ApiKeyResponse,
+    ApiKeyUpdate,
     TokenResponse,
     UserCreate,
     UserResponse,
@@ -214,3 +215,46 @@ async def list_api_key(current_user: BaseUser = Depends(get_current_user)):
         )
         for key in api_keys
     ]
+
+
+@router.put("/tokens/{token_id}", response_model=ApiKeyListItem)
+async def update_api_key(token_id: int, update_data: ApiKeyUpdate, current_user: BaseUser = Depends(get_current_user)):
+    """更新 API Key 的过期时间。
+
+    Args:
+        token_id: 要更新的 API Key ID
+        update_data: 更新数据
+        current_user: 已认证的用户
+
+    Returns:
+        ApiKeyListItem: 更新后的 API Key 信息
+    """
+    try:
+        api_key = await auth_service.update_api_key_expiry(token_id, current_user.id, update_data.expires_in_days)
+
+        if not api_key:
+            raise HTTPException(status_code=404, detail="API Key not found or does not belong to you")
+
+        logger.info(
+            "api_key_updated",
+            api_key_id=token_id,
+            user_id=current_user.id,
+            new_expires_at=api_key.expires_at.isoformat(),
+        )
+
+        return ApiKeyListItem(
+            id=api_key.id,
+            name=api_key.name or "",
+            expires_at=api_key.expires_at,
+            created_at=api_key.created_at,
+            revoked=api_key.revoked,
+        )
+    except ValueError as ve:
+        logger.error(
+            "api_key_update_validation_failed",
+            error=str(ve),
+            api_key_id=token_id,
+            user_id=current_user.id,
+            exc_info=True,
+        )
+        raise HTTPException(status_code=422, detail=str(ve))

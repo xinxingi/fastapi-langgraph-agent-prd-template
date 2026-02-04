@@ -134,6 +134,40 @@ class ApiKeyCreate(BaseModel):
         return v
 
 
+class ApiKeyUpdate(BaseModel):
+    """更新 API Key 的请求模型。
+
+    Attributes:
+        expires_in_days: 新的有效期（天数），最长可设置到 2099 年
+    """
+
+    expires_in_days: int = Field(..., description="新的有效期（天数），最长可设置到 2099 年", ge=1, le=27000)
+
+    @field_validator("expires_in_days")
+    @classmethod
+    def validate_expiry_date(cls, v: int) -> int:
+        """验证过期时间不超过 2099 年。
+
+        Args:
+            v: 要验证的天数
+
+        Returns:
+            int: 验证后的天数
+
+        Raises:
+            ValueError: 如果过期日期超过 2099 年
+        """
+        from datetime import datetime, timedelta, UTC
+
+        max_date = datetime(2099, 12, 31, tzinfo=UTC)
+        future_date = datetime.now(UTC) + timedelta(days=v)
+
+        if future_date > max_date:
+            raise ValueError(f"过期时间不能超过 2099 年 12 月 31 日")
+
+        return v
+
+
 class ApiKeyResponse(BaseModel):
     """创建 API Key 的响应模型。
 

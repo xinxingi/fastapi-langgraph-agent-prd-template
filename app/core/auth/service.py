@@ -240,6 +240,44 @@ class AuthService:
             logger.info("api_keys_retrieved", user_id=user_id, count=len(api_keys))
             return list(api_keys)
 
+    async def update_api_key_expiry(self, token_id: int, user_id: int, expires_in_days: int) -> Optional[ApiKey]:
+        """更新 API Key 的过期时间。
+
+        Args:
+            token_id: API Key ID
+            user_id: 用户 ID（用于权限验证）
+            expires_in_days: 新的有效期（天数）
+
+        Returns:
+            Optional[ApiKey]: 更新后的 API Key，如果不存在或权限不足则返回 None
+        """
+        with Session(self.engine) as session:
+            api_key = session.get(ApiKey, token_id)
+            if not api_key or api_key.user_id != user_id:
+                return None
+
+            # 计算新的过期时间
+            from datetime import datetime, timedelta, UTC
+
+            max_date = datetime(2099, 12, 31, tzinfo=UTC)
+            new_expires_at = datetime.now(UTC) + timedelta(days=expires_in_days)
+
+            if new_expires_at > max_date:
+                raise ValueError("过期时间不能超过 2099 年 12 月 31 日")
+
+            api_key.expires_at = new_expires_at
+            session.add(api_key)
+            session.commit()
+            session.refresh(api_key)
+
+            logger.info(
+                "api_key_updated",
+                api_key_id=token_id,
+                user_id=user_id,
+                new_expires_at=new_expires_at.isoformat(),
+            )
+            return api_key
+
     async def health_check(self) -> bool:
         """检查数据库连接健康状况。
 

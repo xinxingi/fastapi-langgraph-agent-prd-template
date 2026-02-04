@@ -17,6 +17,7 @@ import type {
   ApiKeyCreate,
   ApiKeyResponse,
   ApiKeyListItem,
+  ApiKeyUpdate,
 } from '../types'
 
 export class AuthService {
@@ -71,6 +72,14 @@ export class AuthService {
    */
   async listTokens(): Promise<ApiKeyListItem[]> {
     const response = await axios.get<ApiKeyListItem[]>('/api/v1/auth/list_api_key')
+    return response.data
+  }
+
+  /**
+   * 更新 API Key
+   */
+  async updateToken(tokenId: number, updateData: ApiKeyUpdate): Promise<ApiKeyListItem> {
+    const response = await axios.put<ApiKeyListItem>(`/api/v1/auth/tokens/${tokenId}`, updateData)
     return response.data
   }
 
